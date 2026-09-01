@@ -16,6 +16,8 @@
     "db:seed": "tsx scripts/seed.ts",
     "db:backup": "tsx scripts/backup.ts",
     "db:restore": "tsx scripts/restore.ts",
+    "env:import-meta": "tsx scripts/import-upscale-meta-env.ts",
+    "chrome:instagram": "tsx scripts/start-instagram-chrome.ts",
     "verify": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "postinstall": "pnpm db:migrate"
   },
