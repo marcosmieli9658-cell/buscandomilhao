@@ -1,0 +1,21 @@
+import fs from "node:fs";
+import path from "node:path";
+import Database from "better-sqlite3";
+import { normalizeDatabasePath } from "../src/db/client";
+import { getEnv } from "../src/lib/env";
+
+const backupArgument = process.argv[2];
+if (!backupArgument) throw new Error("Usage: pnpm db:restore -- backups/<file>.db");
+const backupPath = path.resolve(process.cwd(), backupArgument);
+const backupRoot = path.resolve(process.cwd(), "backups");
+if (!backupPath.startsWith(`${backupRoot}${path.sep}`) || !fs.existsSync(backupPath)) throw new Error("Backup must be an existing file inside backups/.");
+const destination = normalizeDatabasePath(getEnv().DATABASE_URL);
+if (destination === ":memory:") throw new Error("Cannot restore into an in-memory database.");
+const source = new Database(backupPath, { readonly: true });
+const integrity = source.pragma("integrity_check", { simple: true });
+if (integrity !== "ok") throw new Error(`Backup integrity check failed: ${integrity}`);
+source.close();
+const safetyCopy = `${destination}.before-restore-${Date.now()}`;
+if (fs.existsSync(destination)) fs.copyFileSync(destination, safetyCopy);
+fs.copyFileSync(backupPath, destination);
+console.log(`Backup restored to ${destination}. Previous database: ${safetyCopy}`);

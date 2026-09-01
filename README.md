@@ -1,242 +1,78 @@
-<div align="center">
+# UpScale Instagram Sales Agent
 
-# 🚀 Buscando 1 Milhão
+Sistema comercial local da UpScale Agency para descobrir, qualificar e acompanhar leads no Instagram com CRM auditável, worker durável e handoff seguro entre o Chrome dedicado e a API oficial da Meta.
 
-### Um prompt. Um sistema comercial autônomo. Construído em público.
+O projeto implementa o ciclo:
 
-<br/>
-
-![Status](https://img.shields.io/badge/status-em%20construção-FFB000?style=for-the-badge&labelColor=0D1117)
-![Meta](https://img.shields.io/badge/meta-R$%201.000.000-00C853?style=for-the-badge&labelColor=0D1117)
-![Build in Public](https://img.shields.io/badge/build-in%20public-E1306C?style=for-the-badge&logo=instagram&logoColor=white&labelColor=0D1117)
-
-<br/>
-
-![Next.js](https://img.shields.io/badge/Next.js-000000?style=flat-square&logo=nextdotjs&logoColor=white)
-![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)
-![Tailwind](https://img.shields.io/badge/Tailwind-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)
-![SQLite](https://img.shields.io/badge/SQLite-003B57?style=flat-square&logo=sqlite&logoColor=white)
-![Drizzle](https://img.shields.io/badge/Drizzle-C5F74F?style=flat-square&logo=drizzle&logoColor=black)
-![OpenAI](https://img.shields.io/badge/OpenAI-412991?style=flat-square&logo=openai&logoColor=white)
-![Playwright](https://img.shields.io/badge/Playwright-2EAD33?style=flat-square&logo=playwright&logoColor=white)
-
-<br/>
-
-## ⬇️ [**PROMPT.md**](PROMPT.md) ⬇️
-
-**É esse arquivo. Preenche, cola no Codex, pronto.**
-
-<br/>
-
-**[O que é](#-o-que-é) · [Como funciona](#-como-funciona) · [Como usar](#-como-usar) · [Setup](#-setup-da-sua-máquina) · [Regras](#-regras-que-não-se-negocia)**
-
-</div>
-
----
-
-## 🎯 O que é
-
-Um agente de IA que prospecta pelo Instagram sozinho: acha o lead, qualifica, escreve a primeira mensagem, entende a resposta, conduz a conversa, encaminha pro WhatsApp e **aprende com o que converteu** — ajustando público, texto, horário e cadência sem ninguém mandar.
-
-Roda 100% local. Seu banco, sua sessão, sua chave.
-
-```
+```text
 Observar → Decidir → Agir → Medir → Aprender → Adaptar
 ```
 
-Aqui **não tem código pronto**. Tem o prompt que constrói o código. Você troca os `{{PLACEHOLDERS}}` pelo seu negócio, cola no Codex, e sai um sistema seu — não uma cópia do meu.
+## Estado atual
 
-<br/>
+- Dashboard e CRM em PT-BR
+- Funis separados de clientes e afiliados
+- Funil de afiliados desativado até existir programa verificado
+- Descoberta em aba isolada do Chrome por CDP
+- Cadastro e mensagens protegidos contra duplicidade
+- Primeira DM pelo Chrome dedicado com dry-run padrão
+- Webhook Meta com verificação HMAC e idempotência
+- Handoff atômico de propriedade navegador → API oficial
+- Motor de conversação estruturado com OpenAI
+- Afirmações comerciais limitadas ao arquivo de fatos verificados
+- Opt-out permanente e imediato
+- Limites diários, aquecimento, horário e intervalo entre DMs
+- Jobs duráveis, retry, dead-letter e recuperação após reinício
+- Experimentos com atribuição determinística e grupo de controle
+- Custo de IA por lead e por cliente ativo
+- Auditoria, timeline, fila de exceções e pausa geral
+- Backup e restauração do SQLite
 
-## ⚙️ Como funciona
-
-```mermaid
-flowchart LR
-    A["🔎 Descoberta<br/>perfis do ICP"] --> B["🧠 Qualificação<br/>score + prioridade"]
-    B --> C["💬 1ª DM<br/>seu Chrome real"]
-    C --> D{"Respondeu?"}
-    D -- não --> E["⏰ Follow-up<br/>agendado"]
-    E --> D
-    D -- sim --> F["📡 Webhook Meta<br/>handoff de canal"]
-    F --> G["🤖 Conversa<br/>API oficial + OpenAI"]
-    G --> H["📱 WhatsApp<br/>ou grupo de afiliados"]
-    H --> I["📊 Métricas<br/>o que converteu?"]
-    I -.retroalimenta.-> A
-
-    style A fill:#1f2937,stroke:#E1306C,color:#fff
-    style C fill:#1f2937,stroke:#FFB000,color:#fff
-    style G fill:#1f2937,stroke:#412991,color:#fff
-    style H fill:#1f2937,stroke:#25D366,color:#fff
-    style I fill:#1f2937,stroke:#00C853,color:#fff
-```
-
-### Por que dois canais
-
-| Etapa | Canal | Motivo |
-|:--|:--|:--|
-| **Primeiro contato** | Seu Chrome, sua sessão | A API oficial da Meta **não abre** conversa com quem nunca te respondeu |
-| **Depois da resposta** | API oficial + webhook | É o caminho suportado, auditável e estável |
-
-Uma **trava de canal** garante que os dois nunca escrevam no mesmo fio. Depois do handoff, o navegador está proibido de responder.
-
-<br/>
-
-## 🚦 Como usar
-
-### `1` Preenche o bloco de configuração
-
-Abre o [**PROMPT.md**](PROMPT.md). No topo tem um bloco `CONFIGURAÇÃO` com uns 15 campos. Troca cada `{{PLACEHOLDER}}` pelo seu: nome, empresa, site, @ do Instagram, WhatsApp, oferta e quem é seu cliente ideal.
-
-Dois campos merecem atenção:
-
-- **`VERIFIED_CLAIMS`** — só o que você consegue provar hoje. É a única coisa que a IA pode afirmar pro lead.
-- **`UNVERIFIED_CLAIMS`** — o que você *quer* dizer mas ainda não comprovou. Fica bloqueado até virar prova.
-
-### `2` Cola no Codex
-
-Copia o arquivo inteiro, do começo ao fim, e cola numa task do Codex.
-
-> 💡 Codex cloud roda em container — ele **escreve** toda a camada de navegador e testa contra páginas simuladas, mas não alcança o seu Chrome. O prompt já diz isso pra ele, então ele entrega tudo e deixa o teste real documentado pra você rodar local.
-
-### `3` Roda na sua máquina
-
-Clona o que ele gerou, faz o [setup abaixo](#-setup-da-sua-máquina), e sobe:
+## Executar
 
 ```bash
-pnpm install && pnpm dev
+pnpm install
+pnpm dev
 ```
 
-<br/>
+O comando inicia painel e worker. Abra <http://localhost:3000>.
 
-## 🔧 Setup da sua máquina
+Antes do primeiro uso real, siga o [SETUP.md](SETUP.md). O sistema começa em `DRY_RUN=true`.
 
-<details>
-<summary><b>🔑 Chave da OpenAI</b></summary>
-
-<br/>
-
-1. **https://platform.openai.com/api-keys** → login.
-2. **Settings → Billing**: adiciona crédito. Sem crédito, dá `429 insufficient_quota`.
-3. **Settings → Limits**: define um **hard limit** mensal (ex. `USD 50`). Esse é o freio real se o agente entrar em loop.
-4. **Create new secret key** → projeto **separado** (não usa o `Default`) → permissão `Restricted`, só `Model capabilities: Write`.
-5. Copia a chave **agora**, ela só aparece uma vez.
+## Verificar
 
 ```bash
-cp .env.example .env
-# cola em OPENAI_API_KEY=sk-proj-...
+pnpm verify
 ```
 
-O `.env` já está no `.gitignore`. Nunca commita, nunca aparece em print ou vídeo.
+Esse comando executa lint, TypeScript strict, testes e build de produção. Os testes críticos cobrem dedupe, transições, primeira DM, webhook, handoff, trava de envio duplicado, janela da API, opt-out, follow-up, experimentos, recuperação, circuit breaker e orçamento.
 
-**Vazou?** Revoga em `platform.openai.com/api-keys` e gera outra. Revogar resolve — reescrever o histórico do Git é secundário.
+## Estrutura
 
-</details>
-
-<details>
-<summary><b>🌐 Sessão do Instagram no seu Chrome</b></summary>
-
-<br/>
-
-Perfil **dedicado**, separado do seu pessoal. Isso resolve três coisas de uma vez: o agente nunca vê suas abas, seu Chrome normal continua livre, e o Chrome 136+ recusa debug no perfil padrão de qualquer jeito.
-
-**macOS**
-
-```bash
-/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome \
-  --remote-debugging-port=9222 \
-  --remote-debugging-address=127.0.0.1 \
-  --user-data-dir="$PWD/.chrome-profile"
+```text
+config/business.json         fatos reais e ICP, ignorado pelo Git
+src/app                      painel Next.js e webhook
+src/features                 regras de leads e experimentos
+src/integrations/browser     Playwright via CDP
+src/integrations/instagram   webhook e API oficial
+src/integrations/openai      decisões estruturadas e custo
+src/db                       schema e cliente SQLite/Drizzle
+src/worker                   fila durável e handlers
+drizzle                      migrações versionadas
+scripts                      migrate, seed, backup e restore
 ```
 
-**Linux**
+Detalhes técnicos estão em [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) e as limitações oficiais validadas em [docs/PLATFORM-CONSTRAINTS.md](docs/PLATFORM-CONSTRAINTS.md).
 
-```bash
-google-chrome --remote-debugging-port=9222 --user-data-dir="$PWD/.chrome-profile"
-```
+## Segurança operacional
 
-**Windows (PowerShell)**
+- `.env`, `config/business.json`, banco, perfil do Chrome e artefatos locais não entram no Git.
+- A porta CDP deve ficar exclusivamente em `127.0.0.1`.
+- O navegador nunca responde depois do handoff para a API.
+- API sem permissão, janela encerrada ou webhook indisponível não são contornados pelo navegador.
+- Pedidos de remoção encerram permanentemente o contato em todos os canais.
+- O smoke test real deve usar uma conta de teste controlada pelo operador.
 
-```powershell
-& "C:\Program Files\Google\Chrome\Application\chrome.exe" `
-  --remote-debugging-port=9222 `
-  --user-data-dir="$PWD\.chrome-profile"
-```
+## Origem
 
-Nessa janela que abriu, entra no `instagram.com`, loga normal, resolve o 2FA. A sessão fica salva e sobrevive a reinício.
-
-Testa:
-
-```bash
-curl -s http://127.0.0.1:9222/json/version
-```
-
-> ⚠️ **Segurança:** essa porta dá controle total sobre a sessão logada nesse perfil. Mantém em `127.0.0.1`, nunca `0.0.0.0`, e não roda em máquina compartilhada. O `.chrome-profile/` guarda seus cookies do Instagram — já está no `.gitignore` e não sai da sua máquina.
-
-</details>
-
-<br/>
-
-## 🛡️ Regras que não se negocia
-
-<details>
-<summary><b>Como o agente não queima a conta</b></summary>
-
-<br/>
-
-| Controle | Padrão |
-|:--|:--|
-| DMs por dia | 30, com aquecimento gradual |
-| Intervalo entre DMs | 90–240s aleatório |
-| Janela de operação | 09:00–20:00, fuso configurável |
-| Circuit breaker | Pausa tudo em erro anormal, restrição ou opt-out em alta |
-
-Ritmo humano existe por **saúde da conta** — mesma disciplina de um SDR de verdade. Não tem fingerprint forjado, API privada nem tentativa de burlar bloqueio.
-
-</details>
-
-<details>
-<summary><b>Como o agente não mente</b></summary>
-
-<br/>
-
-A IA só pode afirmar o que está em `VERIFIED_CLAIMS`. Qualquer coisa em `UNVERIFIED_CLAIMS` fica bloqueada até virar prova.
-
-Ela nunca inventa taxa, condição, garantia ou superlativo, nunca promete aprovação de conta, e nunca finge ser cliente pra arrancar resposta.
-
-</details>
-
-<details>
-<summary><b>Como o agente respeita quem não quer</b></summary>
-
-<br/>
-
-Pedido de parar é atendido na hora. O perfil entra em `do_not_contact` — permanente, sem follow-up, sem reentrada por outra campanha, por nenhum canal.
-
-</details>
-
-<details>
-<summary><b>Como o custo não explode</b></summary>
-
-<br/>
-
-Toda chamada à OpenAI grava tokens e custo. Ao bater `OPENAI_MONTHLY_BUDGET_USD`, o sistema pausa sozinho.
-
-O painel mostra **custo por lead** e **custo por cliente ativo** — sem isso não dá pra saber se a automação dá lucro.
-
-</details>
-
-<br/>
-
----
-
-<div align="center">
-
-**Este repositório é público de propósito.**
-
-Pega o [PROMPT.md](PROMPT.md), troca os `{{PLACEHOLDERS}}`, e constrói o seu.
-
-<br/>
-
-⭐ Se isso te ajudou, deixa uma estrela e acompanha a jornada.
-
-</div>
+Construído a partir do prompt público [Buscando 1 Milhão](https://github.com/soumatheusgomes/buscandomilhao), adaptado para a operação e para as regras comerciais da UpScale Agency.
