@@ -2,6 +2,23 @@
 
 Este sistema roda localmente. O banco, a sessão do Chrome e as credenciais permanecem na máquina do operador.
 
+## Situação da configuração — 02/09/2026
+
+- Chave restrita da OpenAI criada no projeto `UpScale Instagram Sales Agent`, salva no `.env` local e validada com uma resposta real curta.
+- Credenciais locais da Meta preenchidas, incluindo o segredo do aplicativo. Isso não significa que a integração de mensagens esteja liberada.
+- Operação mantida em pausa geral e `DRY_RUN=true`. Nenhuma mensagem real enviada nesta configuração.
+- Pendências na Meta: verificação da empresa, requisitos de publicação (incluindo privacidade e exclusão de dados), callback HTTPS, assinatura dos eventos e teste de recebimento.
+- O Chrome dedicado ainda precisa estar conectado para a descoberta pelo navegador.
+- Na sessão atual, o painel usa `http://127.0.0.1:3001`, porque outro projeto ocupa a porta 3000. O endereço funciona somente enquanto o processo local estiver rodando.
+
+Para iniciar painel e worker na porta alternativa, execute nesta pasta:
+
+```powershell
+pnpm exec concurrently -k -n painel,worker "next dev --hostname 127.0.0.1 --port 3001" "tsx watch src/worker/index.ts"
+```
+
+Não execute uma segunda instância do worker se a primeira ainda estiver ativa. As credenciais não acompanham o commit nem o push; ficam apenas no `.env` desta máquina.
+
 ## 1. Requisitos
 
 - Node.js 24 LTS
@@ -37,7 +54,7 @@ Este repositório da UpScale já possui `config/business.json` preenchido na má
 2. Crie um projeto separado para o agente comercial. Não use o projeto padrão.
 3. Em Settings, Billing, adicione crédito.
 4. Em Settings, Limits, configure um limite mensal rígido.
-5. Crie uma chave com permissão `Restricted`, liberando somente a escrita necessária em modelos.
+5. Crie uma chave com permissão `Restricted`, liberando `Responses (/v1/responses): Write` para o motor de conversação.
 6. Cole a chave em `OPENAI_API_KEY` no `.env`.
 
 O sistema também consulta `OPENAI_MONTHLY_BUDGET_USD` antes de cada chamada e pausa ao atingir o teto. Esse controle interno complementa, mas não substitui, o limite rígido da plataforma.
@@ -100,13 +117,13 @@ A permissão de publicação já usada pela UpScale não implica permissão de m
 - token de acesso em `INSTAGRAM_PAGE_ACCESS_TOKEN`;
 - ID da conta profissional em `INSTAGRAM_BUSINESS_ACCOUNT_ID`.
 
-Para desenvolvimento local, exponha somente a rota do webhook por um túnel HTTPS confiável. Não exponha a porta de depuração do Chrome.
+Para desenvolvimento local, exponha somente a rota do webhook por um túnel HTTPS confiável. Não exponha o painel local nem a porta de depuração do Chrome.
 
 A API oficial só pode responder a uma pessoa que iniciou ou respondeu a conversa. Por isso, o primeiro contato é feito pelo Chrome dedicado. Depois que o webhook recebe a resposta, a propriedade do canal muda de `browser` para `api` de forma auditável.
 
 ## 6. Simulação, dry-run e piloto
 
-O `.env.example` começa com `DRY_RUN=true`. Nessa condição, a camada do navegador abre o perfil e preenche a mensagem, mas não envia.
+O `.env.example` começa com `DRY_RUN=true`. Nessa condição, a camada do navegador abre o perfil e preenche a mensagem, mas não envia. As respostas pela API também são simuladas: ficam registradas como `dry_run`, sem chamada de envio à Meta nem alteração do horário de último envio. A simulação pode consumir OpenAI se o motor de IA for acionado. A pausa geral bloqueia o envio direto pela API, além da fila.
 
 Fluxo recomendado:
 

@@ -7,7 +7,7 @@ export default defineConfig({
     environment: "node",
     setupFiles: ["./src/test/setup.ts"],
     fileParallelism: false,
-    exclude: ["**/node_modules/**", "**/.next/**", "**/dist/**"],
+    exclude: ["**/node_modules/**", "**/.next/**", "**/.chrome-profile/**", "**/browser-state/**", "**/dist/**"],
     coverage: { reporter: ["text", "html"] },
   },
 });

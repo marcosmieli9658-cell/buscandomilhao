@@ -12,6 +12,12 @@ import { processInstagramWebhook } from "@/integrations/instagram/webhook";
 import { OpenAiConversationEngine } from "@/integrations/openai/engine";
 import { claimNextJob, enqueueJob, pauseBrowserQueue, recoverStaleJobs } from "@/worker/queue";
 import crypto from "node:crypto";
+import * as environment from "@/lib/env";
+
+const baseEnvironment = environment.getEnv();
+function configureApi(dryRun = false) {
+  vi.spyOn(environment, "getEnv").mockReturnValue({ ...baseEnvironment, DRY_RUN: dryRun, INSTAGRAM_PAGE_ACCESS_TOKEN: "test-token", INSTAGRAM_BUSINESS_ACCOUNT_ID: "test-account" });
+}
 
 const fakeBrowser: BrowserGateway = {
   async sendFirstMessage(request) { return { sent: !request.dryRun, dryRun: request.dryRun, url: `https://www.instagram.com/${request.handle.replace("@", "")}/` }; },
@@ -85,9 +91,44 @@ describe("critical autonomous sales flows", () => {
   });
 
   it("blocks API sends outside the 24-hour eligibility window", async () => {
+    configureApi();
     const leadId = createQualifiedLead();
     database.db.update(leads).set({ instagramScopedId: "igsid-expired", channelState: "api_active", channelOwner: "api", lastInboundAt: new Date(Date.now() - 25 * 60 * 60_000) }).where(eq(leads.id, leadId)).run();
-    await expect(sendInstagramApiMessage(leadId, "Mensagem tardia")).rejects.toThrow(/credentials|expired/);
+    await expect(sendInstagramApiMessage(leadId, "Mensagem tardia")).rejects.toThrow(/expired/);
+  });
+
+  it("simulates API responses without network calls or delivery state changes", async () => {
+    configureApi(true);
+    const leadId = createQualifiedLead();
+    database.db.update(leads).set({ instagramScopedId: "igsid-test", channelState: "api_active", channelOwner: "api", lastInboundAt: new Date() }).where(eq(leads.id, leadId)).run();
+    const network = vi.spyOn(globalThis, "fetch");
+    expect((await sendInstagramApiMessage(leadId, "Simulação")).dry_run).toBe(true);
+    await sendInstagramApiMessage(leadId, "Simulação");
+    expect(network).not.toHaveBeenCalled();
+    expect(database.db.select().from(messages).all()).toHaveLength(1);
+    expect(database.db.select().from(messages).get()?.deliveryState).toBe("dry_run");
+    expect(database.db.select().from(leads).where(eq(leads.id, leadId)).get()?.lastOutboundAt).toBeNull();
+  });
+
+  it("does not let simulation records block an approved live API send", async () => {
+    configureApi(true);
+    const leadId = createQualifiedLead();
+    database.db.update(leads).set({ instagramScopedId: "igsid-test", channelState: "api_active", channelOwner: "api", lastInboundAt: new Date() }).where(eq(leads.id, leadId)).run();
+    await sendInstagramApiMessage(leadId, "Mensagem");
+    configureApi(false);
+    const network = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ message_id: "mid-test" }), { status: 200 }));
+    expect((await sendInstagramApiMessage(leadId, "Mensagem")).dry_run).toBe(false);
+    expect(network).toHaveBeenCalledOnce();
+    expect(database.db.select().from(messages).all()).toHaveLength(2);
+  });
+
+  it("blocks direct API sends while the operation is paused", async () => {
+    configureApi();
+    const leadId = createQualifiedLead();
+    database.db.update(systemSettings).set({ globallyPaused: true }).where(eq(systemSettings.id, 1)).run();
+    const network = vi.spyOn(globalThis, "fetch");
+    await expect(sendInstagramApiMessage(leadId, "Bloqueada")).rejects.toThrow(/paused/);
+    expect(network).not.toHaveBeenCalled();
   });
 
   it("makes do-not-contact permanent and clears future action", () => {

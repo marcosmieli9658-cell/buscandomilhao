@@ -96,7 +96,8 @@ async function handleInbound(job: DurableJob, engine: ConversationEngine): Promi
     return;
   }
   if (!decision.message) throw new Error(`AI action ${decision.action} requires a message.`);
-  await sendInstagramApiMessage(leadId, decision.message);
+  const delivery = await sendInstagramApiMessage(leadId, decision.message);
+  if (delivery.dry_run) return;
   if (decision.intention === "interested") {
     const lead = database.db.select().from(leads).where(eq(leads.id, leadId)).get();
     if (lead?.pipelineState === "replied") transitionPipeline(leadId, "interested", "ai", decision.reasoningSummary);

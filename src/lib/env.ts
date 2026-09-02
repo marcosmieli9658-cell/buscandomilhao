@@ -1,4 +1,16 @@
 import { z } from "zod";
+import { loadEnvFile } from "node:process";
+
+// The standalone worker does not run through Next.js's environment loader.
+// Existing process variables win; local overrides are loaded before .env.
+if (process.env.NODE_ENV !== "test") {
+  for (const filename of [".env.local", ".env"]) {
+    try { loadEnvFile(filename); }
+    catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+  }
+}
 
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
