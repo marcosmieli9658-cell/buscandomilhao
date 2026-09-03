@@ -2,21 +2,23 @@
 
 Este sistema roda localmente. O banco, a sessão do Chrome e as credenciais permanecem na máquina do operador.
 
-## Situação da configuração — 02/09/2026
+## Situação da configuração — 03/09/2026
 
 - Chave restrita da OpenAI criada no projeto `UpScale Instagram Sales Agent`, salva no `.env` local e validada com uma resposta real curta.
 - Credenciais locais da Meta preenchidas, incluindo o segredo do aplicativo. Isso não significa que a integração de mensagens esteja liberada.
-- Operação pausada pelo operador em 02/09/2026: painel e worker encerrados, pausa geral ativa no banco e `DRY_RUN=true`. Não reiniciar nem liberar envios antes de o usuário retomar.
-- O usuário informou que enviou o CNPJ manualmente à Meta. Na última inspeção do painel, a verificação da empresa ainda mostrava `Envio pendente`; o upload não foi confirmado separadamente. Não reenviar o documento automaticamente e não presumir que a análise já começou.
-- Pendências observadas na Meta: domínio ainda não adicionado ao portfólio; app `UpScale Publisher` não publicado; política de privacidade, exclusão de dados, ícone 1024 x 1024 e categoria sinalizados como incompletos; permissão `instagram_business_manage_messages` ainda com ação `Adicionar`; callback HTTPS vazio e assinatura do webhook de `upscaleagency3` desativada.
+- Operação pausada pelo operador em 02/09/2026: painel e worker encerrados, pausa geral ativa no banco e `DRY_RUN=true`. O usuário retomou a configuração em 03/09, mas os processos não foram reiniciados e os envios continuam bloqueados até o teste controlado.
+- Domínio `agencyupscale.com.br` associado ao portfólio UpScale com autorização específica e confirmado como `Verified` na Meta em 03/09. Apenas um TXT foi adicionado no DNS da Vercel; sua propagação pública foi confirmada e os registros anteriores foram preservados. Não foram atribuídos parceiros ou acessos adicionais.
+- O `CNPJ.pdf` já estava anexado nos dois campos de comprovação da Meta; os anexos foram confirmados visualmente, sem novo upload. A conexão empresarial foi comprovada pelo domínio, sem solicitar códigos ao sócio.
+- Verificação empresarial enviada em 03/09: confirmação `Informações enviadas`, seguida de status `Em análise` na Central de Segurança. A Meta informou aproximadamente 2 dias úteis para a análise. A aprovação ainda não foi concedida.
+- Pendências observadas na Meta: resultado da análise empresarial; app `UpScale Publisher` não publicado; política de privacidade, exclusão de dados, ícone 1024 x 1024 e categoria sinalizados como incompletos; permissão `instagram_business_manage_messages` ainda com ação `Adicionar`; callback HTTPS vazio e assinatura do webhook de `upscaleagency3` desativada.
 - Última validação local: 18 testes passaram; desafio válido do webhook retornou 200, verificação sem token retornou 403 e POST sem assinatura retornou 401. CRM sem leads, mensagens, jobs ou eventos de webhook reais.
 - O Chrome dedicado ainda precisa estar conectado para a descoberta pelo navegador.
 - Na última sessão, o painel usou `http://127.0.0.1:3001`. O endereço está indisponível durante a pausa e volta a funcionar somente após iniciar o processo local. Antes de iniciar, conferir se a porta está livre e se não existe outro worker.
 
 ### Próxima retomada
 
-1. Conferir o status na [Central de Segurança da Meta](https://business.facebook.com/latest/settings/security_center?business_id=1117784300813507). Se continuar `Envio pendente`, identificar a etapa ainda não submetida; não tratar esse status como aprovação ou análise em andamento.
-2. Conferir o [domínio](https://business.facebook.com/latest/settings/domains?business_id=1117784300813507) e os [requisitos de publicação do app](https://developers.facebook.com/apps/1079041917806734/go_live/?business_id=1117784300813507).
+1. Conferir o resultado na [Central de Segurança da Meta](https://business.facebook.com/latest/settings/security_center?business_id=1117784300813507). O último status confirmado é `Em análise`; não presumir aprovação pelo prazo decorrido.
+2. O [domínio](https://business.facebook.com/latest/settings/domains?business_id=1117784300813507) já está verificado. Continuar os [requisitos de publicação do app](https://developers.facebook.com/apps/1079041917806734/go_live/?business_id=1117784300813507), sem recriar o domínio ou reenviar os documentos.
 3. Concluir os requisitos pendentes, permissões de mensagens e webhook público HTTPS, sem expor o painel local ou a porta de depuração.
 4. Conectar o Chrome dedicado, iniciar painel e worker e manter as proteções até um teste explicitamente autorizado com conta controlada pelo operador.
 5. Só considerar a integração pronta após recebimento, registro no CRM e resposta real sem duplicidade. Ensinar o uso ao operador ao concluir.
