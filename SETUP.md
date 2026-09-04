@@ -5,25 +5,26 @@ Este sistema roda localmente. O banco, a sessão do Chrome e as credenciais perm
 ## Situação da configuração — 03/09/2026
 
 - Chave restrita da OpenAI criada no projeto `UpScale Instagram Sales Agent`, salva no `.env` local e validada com uma resposta real curta.
-- Credenciais locais da Meta preenchidas e validadas sem expor valores: app, segredo, token de acesso, token de verificação e conta profissional.
-- Operação protegida: pausa geral ativa no banco, `DRY_RUN=true` e banco zerado, sem leads, mensagens, jobs ou eventos reais.
+- Credenciais locais da Meta preenchidas e validadas sem expor valores: app principal, app do produto Instagram, os dois segredos, token de acesso, token de verificação e conta profissional.
+- Operação protegida: `DRY_RUN=true`. A fila de navegador está em modo assistido pelo operador; jobs de navegador aguardam sem impedir o processamento de respostas oficiais da API.
 - Domínio `agencyupscale.com.br` associado ao portfólio UpScale com autorização específica e confirmado como `Verified` na Meta em 03/09. Apenas um TXT foi adicionado no DNS da Vercel; sua propagação pública foi confirmada e os registros anteriores foram preservados. Não foram atribuídos parceiros ou acessos adicionais.
 - O `CNPJ.pdf` já estava anexado nos dois campos de comprovação da Meta; os anexos foram confirmados visualmente, sem novo upload. A conexão empresarial foi comprovada pelo domínio, sem solicitar códigos ao sócio.
 - Verificação empresarial aprovada. A Central de Segurança mostra a empresa como `Verificada`.
 - App `UpScale Publisher` publicado. Domínio, email, política de privacidade, termos de uso, exclusão de dados, categoria e ícone oficial foram salvos.
 - `instagram_business_basic`, `instagram_business_content_publish` e `instagram_business_manage_messages` aparecem como `Pronto para teste`. O token atual leu o perfil e a API de conversas com sucesso, sem retornar conteúdo privado no diagnóstico.
-- Webhook HTTPS configurado e ativo para o objeto Instagram. O campo `messages` está assinado no app e na conta profissional. A rota pública aceita somente `/api/instagram/webhook`; outras rotas ficam inacessíveis.
-- `pnpm dev` inicia painel, worker, gateway restrito e Cloudflare Quick Tunnel. O endereço temporário é registrado automaticamente na Meta e URLs defeituosas são descartadas com até quatro tentativas.
-- Última validação: lint, TypeScript, 18 testes e build de produção passaram. Desafio válido do webhook retornou 200, token inválido retornou 403 e POST sem assinatura retornou 401.
-- O painel está em `http://localhost:3000` e mostra `6/6 prontas`. O Chrome dedicado está conectado em `127.0.0.1:9222`; se a janela for fechada, reabra com `pnpm chrome:instagram`.
+- Webhook HTTPS configurado no produto correto, **Login da empresa no Instagram**. O campo `messages` está assinado no produto e na conta profissional. A rota pública aceita somente `/api/instagram/webhook`; outras rotas ficam inacessíveis.
+- Teste real concluído em 03/09: as respostas `Recebi 3` e `Recebi 4` foram entregues novamente pela Meta, validadas com a chave específica do produto, gravadas sem erro e fizeram o handoff `browser → api_active`. A resposta gerada pela IA ficou apenas em `dry_run` e não foi enviada.
+- Validação final concluída: lint, TypeScript, 19 testes e build de produção passaram.
+- `pnpm dev` inicia painel, worker, gateway restrito e Cloudflare Quick Tunnel. O túnel atual está ativo. Como a URL é temporária, quando ela mudar o callback do produto **Login da empresa no Instagram** precisa ser atualizado pelo navegador antes de receber novas mensagens.
+- O painel está em `http://localhost:3000`. Por preferência do operador, os primeiros contatos usam a sessão já aberta do Instagram no navegador controlado pelo Codex; não é necessário manter um segundo Chrome aberto.
 
 ### Próxima retomada
 
-1. Abrir o Chrome dedicado com `pnpm chrome:instagram`, entrar no Instagram se a sessão não estiver ativa e manter a janela aberta.
-2. Confirmar no painel que o Chrome mudou de `Pendente` para `Pronto`.
-3. Cadastrar somente uma conta de teste controlada pelo operador e executar primeiro com pausa geral ativa e `DRY_RUN=true`.
-4. Para o teste real, retirar a pausa e mudar temporariamente para `DRY_RUN=false`, reiniciar e enviar apenas para a conta de teste autorizada.
-5. Responder pela conta de teste, confirmar o recebimento pelo webhook e validar o handoff para a API sem duplicidade. Pausar novamente depois do teste.
+1. Manter `pnpm dev` rodando e abrir `http://localhost:3000`.
+2. Se o túnel for reiniciado, atualizar pelo navegador o callback do produto **Login da empresa no Instagram** com a nova URL exibida no terminal.
+3. Manter `DRY_RUN=true` enquanto revisar leads e textos.
+4. Para o primeiro contato, processar a fila pelo Codex usando a sessão já conectada do Instagram no navegador do operador.
+5. Depois da resposta do lead, conferir o handoff automático para `api_active`. Só trocar para `DRY_RUN=false` quando houver autorização para respostas reais da API.
 
 O usuário prefere configurar os serviços pelo navegador aberto. Os contatos antigos do cadastro pertencem ao sócio; não solicitar códigos a ele sem combinar. O envio do CNPJ à Meta já foi concluído e a empresa foi verificada.
 
@@ -33,7 +34,7 @@ Para iniciar toda a ferramenta, execute nesta pasta:
 pnpm dev
 ```
 
-Não execute uma segunda instância se a primeira ainda estiver ativa. O Cloudflare Quick Tunnel não oferece garantia de disponibilidade, mas a ferramenta recria e registra a URL automaticamente a cada início. As credenciais não acompanham o commit nem o push; ficam apenas no `.env` desta máquina.
+Não execute uma segunda instância se a primeira ainda estiver ativa. O Cloudflare Quick Tunnel não oferece garantia de disponibilidade. A ferramenta recria a URL e atualiza a assinatura do app principal; o callback do produto Instagram deve acompanhar essa URL. As credenciais não acompanham o commit nem o push; ficam apenas no `.env` desta máquina.
 
 ## 1. Requisitos
 
@@ -81,6 +82,10 @@ Os modelos vêm fixados em snapshots no `.env.example`. Ao trocar um modelo, atu
 Se a chave vazar, revogue imediatamente em <https://platform.openai.com/api-keys>, gere outra e atualize o `.env`. Não compartilhe prints da chave.
 
 ## 4. Chrome dedicado e Instagram
+
+Nesta instalação, o modo escolhido é **navegador assistido pelo operador**: o Codex usa a sessão do Instagram já aberta no navegador do usuário para o primeiro contato. A fila de navegador permanece pausada com o motivo `operator_assisted_browser`, mas jobs da API continuam sendo processados. Não é necessário abrir outro perfil.
+
+O modo dedicado abaixo continua disponível como alternativa para uma instalação totalmente local e autônoma.
 
 O Chrome 136 ou superior exige um diretório de perfil separado para depuração remota. Não use o perfil pessoal.
 
@@ -130,12 +135,14 @@ A permissão de publicação já usada pela UpScale não implica permissão de m
 - assinatura do evento `messages` no app e na conta profissional;
 - callback HTTPS público apontando para `/api/instagram/webhook`;
 - ID do app em `INSTAGRAM_APP_ID`;
+- ID específico do produto em `INSTAGRAM_PRODUCT_APP_ID`;
 - token de verificação igual a `INSTAGRAM_WEBHOOK_VERIFY_TOKEN`;
 - segredo do aplicativo em `INSTAGRAM_APP_SECRET`;
+- segredo específico do produto em `INSTAGRAM_PRODUCT_APP_SECRET`;
 - token de acesso em `INSTAGRAM_PAGE_ACCESS_TOKEN`;
 - ID da conta profissional em `INSTAGRAM_BUSINESS_ACCOUNT_ID`.
 
-O gateway local expõe somente a rota do webhook. O script do túnel aguarda a URL pública responder, atualiza a assinatura do app pela API oficial e mantém o processo ativo. Não exponha o painel local nem a porta de depuração do Chrome.
+O gateway local expõe somente a rota do webhook. A validação HMAC aceita a chave do produto Instagram e a chave do app principal, pois a Meta usa chaves diferentes conforme a origem do evento. O script do túnel aguarda a URL pública responder, atualiza a assinatura do app principal pela API oficial e mantém o processo ativo. Não exponha o painel local nem a porta de depuração do Chrome.
 
 A API oficial só pode responder a uma pessoa que iniciou ou respondeu a conversa. Por isso, o primeiro contato é feito pelo Chrome dedicado. Depois que o webhook recebe a resposta, a propriedade do canal muda de `browser` para `api` de forma auditável.
 

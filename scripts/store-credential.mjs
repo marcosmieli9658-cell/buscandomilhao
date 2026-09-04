@@ -5,6 +5,8 @@ const formats = {
   OPENAI_API_KEY: /^sk-[A-Za-z0-9_-]{20,}$/,
   INSTAGRAM_APP_ID: /^\d{10,20}$/,
   INSTAGRAM_APP_SECRET: /^[a-fA-F0-9]{32}$/,
+  INSTAGRAM_PRODUCT_APP_ID: /^\d{10,20}$/,
+  INSTAGRAM_PRODUCT_APP_SECRET: /^[a-fA-F0-9]{32}$/,
   INSTAGRAM_WEBHOOK_VERIFY_TOKEN: /^[a-fA-F0-9]{64}$/,
 };
 

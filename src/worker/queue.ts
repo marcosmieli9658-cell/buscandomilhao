@@ -30,11 +30,15 @@ export function recoverStaleJobs(staleAfterMs = 5 * 60_000): number {
 
 export function claimNextJob(workerId: string): DurableJob | null {
   const transaction = database.sqlite.transaction(() => {
-    const settings = database.sqlite.prepare("SELECT globally_paused FROM system_settings WHERE id = 1").get() as { globally_paused: number } | undefined;
+    const settings = database.sqlite.prepare("SELECT globally_paused, browser_queue_paused FROM system_settings WHERE id = 1").get() as { globally_paused: number; browser_queue_paused: number } | undefined;
     if (settings?.globally_paused) return null;
+    const browserFilter = settings?.browser_queue_paused
+      ? "AND type NOT IN ('discover_instagram', 'send_browser_dm')"
+      : "";
     const row = database.sqlite.prepare(`
       SELECT * FROM jobs
       WHERE status IN ('pending', 'retry') AND run_at <= ?
+      ${browserFilter}
       ORDER BY run_at ASC, id ASC LIMIT 1
     `).get(Date.now()) as { id: number; type: string; payload_json: string; attempts: number; max_attempts: number } | undefined;
     if (!row) return null;

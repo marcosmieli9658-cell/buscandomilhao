@@ -1,6 +1,6 @@
 # UpScale Instagram Sales Agent
 
-Sistema comercial local da UpScale Agency para descobrir, qualificar e acompanhar leads no Instagram com CRM auditável, worker durável e handoff seguro entre o Chrome dedicado e a API oficial da Meta.
+Sistema comercial local da UpScale Agency para descobrir, qualificar e acompanhar leads no Instagram com CRM auditável, worker durável e handoff seguro entre o navegador e a API oficial da Meta.
 
 O projeto implementa o ciclo:
 
@@ -15,7 +15,7 @@ Observar → Decidir → Agir → Medir → Aprender → Adaptar
 - Funil de afiliados desativado até existir programa verificado
 - Descoberta em aba isolada do Chrome por CDP
 - Cadastro e mensagens protegidos contra duplicidade
-- Primeira DM pelo Chrome dedicado com dry-run padrão
+- Primeira DM pelo Chrome dedicado ou pela sessão assistida do operador, com dry-run padrão
 - Webhook Meta com verificação HMAC e idempotência
 - Gateway público restrito ao webhook e túnel HTTPS com registro automático na Meta
 - Handoff atômico de propriedade navegador → API oficial
@@ -36,7 +36,7 @@ pnpm install
 pnpm dev
 ```
 
-O comando inicia painel, worker, gateway restrito e túnel HTTPS. A URL temporária do webhook é registrada automaticamente na Meta. Abra <http://localhost:3000>.
+O comando inicia painel, worker, gateway restrito e túnel HTTPS. A URL temporária do webhook é registrada automaticamente no app principal da Meta. No fluxo com Login da empresa no Instagram, confirme também que o callback específico do produto usa a mesma URL. Abra <http://localhost:3000>.
 
 Antes do primeiro uso real, siga o [SETUP.md](SETUP.md). O sistema começa em `DRY_RUN=true`.
 

@@ -74,7 +74,16 @@ async function waitForTunnel(tunnelOrigin) {
 
 function openTunnel() {
   return new Promise((resolve, reject) => {
-    const tunnel = spawn("cloudflared", ["tunnel", "--no-autoupdate", "--url", gatewayOrigin], {
+    const tunnel = spawn("cloudflared", [
+      "tunnel",
+      "--no-autoupdate",
+      "--protocol",
+      "http2",
+      "--edge-ip-version",
+      "4",
+      "--url",
+      gatewayOrigin,
+    ], {
       windowsHide: true,
       stdio: ["ignore", "pipe", "pipe"],
     });

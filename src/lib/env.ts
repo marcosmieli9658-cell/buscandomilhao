@@ -22,6 +22,7 @@ const envSchema = z.object({
   CHROME_CDP_URL: z.url().default("http://127.0.0.1:9222"),
   CHROME_PROFILE_DIR: z.string().default(".chrome-profile"),
   INSTAGRAM_APP_SECRET: z.string().optional(),
+  INSTAGRAM_PRODUCT_APP_SECRET: z.string().optional(),
   INSTAGRAM_PAGE_ACCESS_TOKEN: z.string().optional(),
   INSTAGRAM_WEBHOOK_VERIFY_TOKEN: z.string().optional(),
   INSTAGRAM_BUSINESS_ACCOUNT_ID: z.string().optional(),

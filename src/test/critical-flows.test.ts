@@ -167,6 +167,14 @@ describe("critical autonomous sales flows", () => {
     expect(() => assertOperatingLimits()).toThrow(/Browser queue is paused/);
   });
 
+  it("keeps browser jobs queued while API jobs continue in operator-assisted mode", () => {
+    enqueueJob("send_browser_dm", { leadId: 1 }, { dedupeKey: "browser-assisted" });
+    enqueueJob("process_inbound", { leadId: 1 }, { dedupeKey: "api-continues" });
+    pauseBrowserQueue("operator_assisted_browser");
+    expect(claimNextJob("worker-test")?.type).toBe("process_inbound");
+    expect(database.sqlite.prepare("SELECT status FROM jobs WHERE dedupe_key = 'browser-assisted'").get()).toEqual({ status: "pending" });
+  });
+
   it("pauses before an OpenAI call after the monthly budget is reached", async () => {
     const leadId = createQualifiedLead();
     database.db.insert(aiCalls).values({ leadId, model: "gpt-5.4-2026-03-05", purpose: "test", inputTokens: 1, outputTokens: 1, estimatedCostUsd: 50, createdAt: new Date(), updatedAt: new Date() }).run();
