@@ -5,39 +5,42 @@ Este sistema roda localmente. O banco, a sessão do Chrome e as credenciais perm
 ## Situação da configuração — 03/09/2026
 
 - Chave restrita da OpenAI criada no projeto `UpScale Instagram Sales Agent`, salva no `.env` local e validada com uma resposta real curta.
-- Credenciais locais da Meta preenchidas, incluindo o segredo do aplicativo. Isso não significa que a integração de mensagens esteja liberada.
-- Operação pausada pelo operador em 02/09/2026: painel e worker encerrados, pausa geral ativa no banco e `DRY_RUN=true`. O usuário retomou a configuração em 03/09, mas os processos não foram reiniciados e os envios continuam bloqueados até o teste controlado.
+- Credenciais locais da Meta preenchidas e validadas sem expor valores: app, segredo, token de acesso, token de verificação e conta profissional.
+- Operação protegida: pausa geral ativa no banco, `DRY_RUN=true` e banco zerado, sem leads, mensagens, jobs ou eventos reais.
 - Domínio `agencyupscale.com.br` associado ao portfólio UpScale com autorização específica e confirmado como `Verified` na Meta em 03/09. Apenas um TXT foi adicionado no DNS da Vercel; sua propagação pública foi confirmada e os registros anteriores foram preservados. Não foram atribuídos parceiros ou acessos adicionais.
 - O `CNPJ.pdf` já estava anexado nos dois campos de comprovação da Meta; os anexos foram confirmados visualmente, sem novo upload. A conexão empresarial foi comprovada pelo domínio, sem solicitar códigos ao sócio.
-- Verificação empresarial enviada em 03/09: confirmação `Informações enviadas`, seguida de status `Em análise` na Central de Segurança. A Meta informou aproximadamente 2 dias úteis para a análise. A aprovação ainda não foi concedida.
-- Pendências observadas na Meta: resultado da análise empresarial; app `UpScale Publisher` não publicado; política de privacidade, exclusão de dados, ícone 1024 x 1024 e categoria sinalizados como incompletos; permissão `instagram_business_manage_messages` ainda com ação `Adicionar`; callback HTTPS vazio e assinatura do webhook de `upscaleagency3` desativada.
-- Última validação local: 18 testes passaram; desafio válido do webhook retornou 200, verificação sem token retornou 403 e POST sem assinatura retornou 401. CRM sem leads, mensagens, jobs ou eventos de webhook reais.
-- O Chrome dedicado ainda precisa estar conectado para a descoberta pelo navegador.
-- Na última sessão, o painel usou `http://127.0.0.1:3001`. O endereço está indisponível durante a pausa e volta a funcionar somente após iniciar o processo local. Antes de iniciar, conferir se a porta está livre e se não existe outro worker.
+- Verificação empresarial aprovada. A Central de Segurança mostra a empresa como `Verificada`.
+- App `UpScale Publisher` publicado. Domínio, email, política de privacidade, termos de uso, exclusão de dados, categoria e ícone oficial foram salvos.
+- `instagram_business_basic`, `instagram_business_content_publish` e `instagram_business_manage_messages` aparecem como `Pronto para teste`. O token atual leu o perfil e a API de conversas com sucesso, sem retornar conteúdo privado no diagnóstico.
+- Webhook HTTPS configurado e ativo para o objeto Instagram. O campo `messages` está assinado no app e na conta profissional. A rota pública aceita somente `/api/instagram/webhook`; outras rotas ficam inacessíveis.
+- `pnpm dev` inicia painel, worker, gateway restrito e Cloudflare Quick Tunnel. O endereço temporário é registrado automaticamente na Meta e URLs defeituosas são descartadas com até quatro tentativas.
+- Última validação: lint, TypeScript, 18 testes e build de produção passaram. Desafio válido do webhook retornou 200, token inválido retornou 403 e POST sem assinatura retornou 401.
+- O painel está em `http://localhost:3000`. O Chrome dedicado ainda precisa ser aberto para a descoberta e a primeira mensagem pelo navegador.
 
 ### Próxima retomada
 
-1. Conferir o resultado na [Central de Segurança da Meta](https://business.facebook.com/latest/settings/security_center?business_id=1117784300813507). O último status confirmado é `Em análise`; não presumir aprovação pelo prazo decorrido.
-2. O [domínio](https://business.facebook.com/latest/settings/domains?business_id=1117784300813507) já está verificado. Continuar os [requisitos de publicação do app](https://developers.facebook.com/apps/1079041917806734/go_live/?business_id=1117784300813507), sem recriar o domínio ou reenviar os documentos.
-3. Concluir os requisitos pendentes, permissões de mensagens e webhook público HTTPS, sem expor o painel local ou a porta de depuração.
-4. Conectar o Chrome dedicado, iniciar painel e worker e manter as proteções até um teste explicitamente autorizado com conta controlada pelo operador.
-5. Só considerar a integração pronta após recebimento, registro no CRM e resposta real sem duplicidade. Ensinar o uso ao operador ao concluir.
+1. Abrir o Chrome dedicado com `pnpm chrome:instagram`, entrar no Instagram se a sessão não estiver ativa e manter a janela aberta.
+2. Confirmar no painel que o Chrome mudou de `Pendente` para `Pronto`.
+3. Cadastrar somente uma conta de teste controlada pelo operador e executar primeiro com pausa geral ativa e `DRY_RUN=true`.
+4. Para o teste real, retirar a pausa e mudar temporariamente para `DRY_RUN=false`, reiniciar e enviar apenas para a conta de teste autorizada.
+5. Responder pela conta de teste, confirmar o recebimento pelo webhook e validar o handoff para a API sem duplicidade. Pausar novamente depois do teste.
 
-O usuário prefere configurar os serviços pelo navegador aberto. Os contatos antigos do cadastro pertencem ao sócio, que só poderá ajudar mais tarde; não solicitar códigos a ele sem combinar. O envio do CNPJ à Meta já foi autorizado, mas não autoriza documentos diferentes, novos acessos ou compromissos adicionais. Não há acompanhamento automático agendado: a conferência será feita quando o usuário voltar.
+O usuário prefere configurar os serviços pelo navegador aberto. Os contatos antigos do cadastro pertencem ao sócio; não solicitar códigos a ele sem combinar. O envio do CNPJ à Meta já foi concluído e a empresa foi verificada.
 
-Para iniciar painel e worker na porta alternativa, execute nesta pasta:
+Para iniciar toda a ferramenta, execute nesta pasta:
 
 ```powershell
-pnpm exec concurrently -k -n painel,worker "next dev --hostname 127.0.0.1 --port 3001" "tsx watch src/worker/index.ts"
+pnpm dev
 ```
 
-Não execute uma segunda instância do worker se a primeira ainda estiver ativa. As credenciais não acompanham o commit nem o push; ficam apenas no `.env` desta máquina.
+Não execute uma segunda instância se a primeira ainda estiver ativa. O Cloudflare Quick Tunnel não oferece garantia de disponibilidade, mas a ferramenta recria e registra a URL automaticamente a cada início. As credenciais não acompanham o commit nem o push; ficam apenas no `.env` desta máquina.
 
 ## 1. Requisitos
 
 - Node.js 24 LTS
 - pnpm 11 ou superior
 - Google Chrome atual
+- `cloudflared` instalado e disponível no `PATH`
 - Conta profissional do Instagram da UpScale
 - Aplicativo da Meta com acesso à conta profissional
 - Projeto separado na plataforma da OpenAI
@@ -58,7 +61,7 @@ cp config/business.example.json config/business.json
 pnpm dev
 ```
 
-No Windows PowerShell, use `Copy-Item` no lugar de `cp` se necessário. O comando `pnpm dev` inicia o painel e o worker durável juntos. Abra `http://localhost:3000`.
+No Windows PowerShell, use `Copy-Item` no lugar de `cp` se necessário. O comando `pnpm dev` inicia painel, worker durável, gateway restrito do webhook e túnel HTTPS. Abra `http://localhost:3000`.
 
 Este repositório da UpScale já possui `config/business.json` preenchido na máquina de operação. O arquivo é privado e ignorado pelo Git.
 
@@ -123,15 +126,16 @@ O worker cria uma aba própria, nunca assume abas do operador, nunca chama `brin
 A permissão de publicação já usada pela UpScale não implica permissão de mensagens. Confirme no aplicativo da Meta:
 
 - conta profissional do Instagram correta;
-- `instagram_business_manage_messages` aprovada para o fluxo Instagram Login;
-- assinatura dos eventos `messages` e `messaging_postbacks`;
+- `instagram_business_manage_messages` com acesso suficiente para a conta própria ou aprovado para contas externas;
+- assinatura do evento `messages` no app e na conta profissional;
 - callback HTTPS público apontando para `/api/instagram/webhook`;
+- ID do app em `INSTAGRAM_APP_ID`;
 - token de verificação igual a `INSTAGRAM_WEBHOOK_VERIFY_TOKEN`;
 - segredo do aplicativo em `INSTAGRAM_APP_SECRET`;
 - token de acesso em `INSTAGRAM_PAGE_ACCESS_TOKEN`;
 - ID da conta profissional em `INSTAGRAM_BUSINESS_ACCOUNT_ID`.
 
-Para desenvolvimento local, exponha somente a rota do webhook por um túnel HTTPS confiável. Não exponha o painel local nem a porta de depuração do Chrome.
+O gateway local expõe somente a rota do webhook. O script do túnel aguarda a URL pública responder, atualiza a assinatura do app pela API oficial e mantém o processo ativo. Não exponha o painel local nem a porta de depuração do Chrome.
 
 A API oficial só pode responder a uma pessoa que iniciou ou respondeu a conversa. Por isso, o primeiro contato é feito pelo Chrome dedicado. Depois que o webhook recebe a resposta, a propriedade do canal muda de `browser` para `api` de forma auditável.
 

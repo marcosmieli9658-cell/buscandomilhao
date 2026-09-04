@@ -5,9 +5,9 @@
   "type": "module",
   "engines": { "node": ">=24 <25", "pnpm": ">=11" },
   "scripts": {
-    "dev": "concurrently -k -n painel,worker -c cyan,yellow \"next dev\" \"tsx watch src/worker/index.ts\"",
+    "dev": "concurrently -k -n painel,worker,webhook,tunnel -c cyan,yellow,magenta,blue \"next dev\" \"tsx watch src/worker/index.ts\" \"node scripts/webhook-gateway.mjs\" \"node scripts/start-webhook-tunnel.mjs\"",
     "build": "next build",
-    "start": "concurrently -k -n painel,worker -c cyan,yellow \"next start\" \"tsx src/worker/index.ts\"",
+    "start": "concurrently -k -n painel,worker,webhook,tunnel -c cyan,yellow,magenta,blue \"next start\" \"tsx src/worker/index.ts\" \"node scripts/webhook-gateway.mjs\" \"node scripts/start-webhook-tunnel.mjs\"",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -18,6 +18,7 @@
     "db:restore": "tsx scripts/restore.ts",
     "env:import-meta": "tsx scripts/import-upscale-meta-env.ts",
     "chrome:instagram": "tsx scripts/start-instagram-chrome.ts",
+    "webhook:tunnel": "node scripts/start-webhook-tunnel.mjs",
     "verify": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "postinstall": "pnpm db:migrate"
   },

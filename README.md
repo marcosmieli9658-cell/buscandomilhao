@@ -17,6 +17,7 @@ Observar → Decidir → Agir → Medir → Aprender → Adaptar
 - Cadastro e mensagens protegidos contra duplicidade
 - Primeira DM pelo Chrome dedicado com dry-run padrão
 - Webhook Meta com verificação HMAC e idempotência
+- Gateway público restrito ao webhook e túnel HTTPS com registro automático na Meta
 - Handoff atômico de propriedade navegador → API oficial
 - Motor de conversação estruturado com OpenAI
 - Afirmações comerciais limitadas ao arquivo de fatos verificados
@@ -35,7 +36,7 @@ pnpm install
 pnpm dev
 ```
 
-O comando inicia painel e worker. Abra <http://localhost:3000>.
+O comando inicia painel, worker, gateway restrito e túnel HTTPS. A URL temporária do webhook é registrada automaticamente na Meta. Abra <http://localhost:3000>.
 
 Antes do primeiro uso real, siga o [SETUP.md](SETUP.md). O sistema começa em `DRY_RUN=true`.
 
@@ -59,7 +60,7 @@ src/integrations/openai      decisões estruturadas e custo
 src/db                       schema e cliente SQLite/Drizzle
 src/worker                   fila durável e handlers
 drizzle                      migrações versionadas
-scripts                      migrate, seed, backup e restore
+scripts                      setup, túnel, migração, seed, backup e restore
 ```
 
 Detalhes técnicos estão em [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) e as limitações oficiais validadas em [docs/PLATFORM-CONSTRAINTS.md](docs/PLATFORM-CONSTRAINTS.md).
