@@ -15,7 +15,7 @@ Este sistema roda localmente. O banco, a sessão do Chrome e as credenciais perm
 - Webhook HTTPS configurado e ativo para o objeto Instagram. O campo `messages` está assinado no app e na conta profissional. A rota pública aceita somente `/api/instagram/webhook`; outras rotas ficam inacessíveis.
 - `pnpm dev` inicia painel, worker, gateway restrito e Cloudflare Quick Tunnel. O endereço temporário é registrado automaticamente na Meta e URLs defeituosas são descartadas com até quatro tentativas.
 - Última validação: lint, TypeScript, 18 testes e build de produção passaram. Desafio válido do webhook retornou 200, token inválido retornou 403 e POST sem assinatura retornou 401.
-- O painel está em `http://localhost:3000`. O Chrome dedicado ainda precisa ser aberto para a descoberta e a primeira mensagem pelo navegador.
+- O painel está em `http://localhost:3000` e mostra `6/6 prontas`. O Chrome dedicado está conectado em `127.0.0.1:9222`; se a janela for fechada, reabra com `pnpm chrome:instagram`.
 
 ### Próxima retomada
 
