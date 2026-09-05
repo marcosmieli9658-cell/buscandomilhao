@@ -59,7 +59,10 @@ async function registerWebhook(tunnelOrigin) {
 async function waitForTunnel(tunnelOrigin) {
   const probe = `${tunnelOrigin}${webhookPath}?hub.mode=subscribe&hub.verify_token=invalid&hub.challenge=probe`;
 
-  for (let attempt = 0; attempt < 15; attempt += 1) {
+  // Quick Tunnels can take more than 30 seconds to propagate even after the
+  // edge connection is registered. Keep the probe patient enough for normal
+  // Cloudflare startup variance before replacing the tunnel URL.
+  for (let attempt = 0; attempt < 45; attempt += 1) {
     try {
       const response = await fetch(probe, { redirect: "manual" });
       if (response.status === 403) return;
@@ -143,19 +146,19 @@ for (const signal of ["SIGINT", "SIGTERM"]) {
   });
 }
 
-for (let attempt = 1; attempt <= 4 && !activeTunnel; attempt += 1) {
+let attempt = 1;
+while (!activeTunnel && !stopping) {
   try {
     activeTunnel = await openTunnel();
   } catch (error) {
     const message = error instanceof Error ? error.message : "Falha ao registrar o webhook.";
-    console.error(`${message} Tentativa ${attempt} de 4.`);
-    if (attempt < 4) await new Promise((resolve) => setTimeout(resolve, 2_000));
+    console.error(`${message} Nova tentativa em instantes (tentativa ${attempt}).`);
+    attempt += 1;
+    await new Promise((resolve) => setTimeout(resolve, Math.min(2_000 * attempt, 30_000)));
   }
 }
 
-if (!activeTunnel) {
-  process.exitCode = 1;
-} else {
+if (activeTunnel) {
   await new Promise((resolve) => activeTunnel.once("exit", resolve));
   if (!stopping) {
     console.error("O túnel HTTPS foi encerrado inesperadamente.");
