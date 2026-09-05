@@ -3,6 +3,7 @@ import { getEnv } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import { createDefaultDependencies, handleJob, type WorkerDependencies } from "./handlers";
 import { claimNextJob, completeJob, failJob, recoverStaleJobs } from "./queue";
+import { ensureDailyDiscoveryJobs } from "./scheduler";
 
 const workerId = `worker-${crypto.randomUUID()}`;
 
@@ -31,6 +32,8 @@ async function main(): Promise<void> {
   }
   logger.info({ workerId }, "Durable worker started");
   while (true) {
+    const dailyJobs = ensureDailyDiscoveryJobs();
+    if (dailyJobs) logger.info({ dailyJobs }, "Automatic weekday discovery jobs queued");
     const processed = await runWorkerIteration(dependencies);
     if (!processed) await new Promise((resolve) => setTimeout(resolve, getEnv().WORKER_POLL_INTERVAL_MS));
   }

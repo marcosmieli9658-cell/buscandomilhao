@@ -18,6 +18,7 @@
     "db:restore": "tsx scripts/restore.ts",
     "env:import-meta": "tsx scripts/import-upscale-meta-env.ts",
     "chrome:instagram": "tsx scripts/start-instagram-chrome.ts",
+    "test:discovery": "tsx scripts/test-discovery.ts",
     "webhook:tunnel": "node scripts/start-webhook-tunnel.mjs",
     "verify": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "postinstall": "pnpm db:migrate"

@@ -16,5 +16,12 @@
   "icpSegments": ["{{SEGMENT_1}}", "{{SEGMENT_2}}", "{{SEGMENT_3}}"],
   "icpKeywords": ["{{KEYWORD_1}}", "{{KEYWORD_2}}", "{{KEYWORD_3}}"],
   "affiliateTopics": ["{{TOPIC_1}}", "{{TOPIC_2}}"],
-  "geography": "{{GEOGRAPHY}}"
+  "geography": "{{GEOGRAPHY}}",
+  "autonomousDiscovery": {
+    "enabled": false,
+    "startDate": "2099-01-01",
+    "dailyLeadLimit": 5,
+    "weekdays": [1, 2, 3, 4, 5],
+    "keywords": ["{{SEGMENT_AND_CITY}}"]
+  }
 }

@@ -15,14 +15,15 @@ Observar → Decidir → Agir → Medir → Aprender → Adaptar
 - Funil de afiliados desativado até existir programa verificado
 - Descoberta em aba isolada do Chrome por CDP
 - Cadastro e mensagens protegidos contra duplicidade
-- Primeira DM pelo Chrome dedicado ou pela sessão assistida do operador, com dry-run padrão
+- Primeira DM pelo Chrome dedicado, com modo real ou simulação visíveis no painel
 - Webhook Meta com verificação HMAC e idempotência
 - Gateway público restrito ao webhook e túnel HTTPS com registro automático na Meta
 - Handoff atômico de propriedade navegador → API oficial
 - Motor de conversação estruturado com OpenAI
 - Afirmações comerciais limitadas ao arquivo de fatos verificados
 - Opt-out permanente e imediato
-- Limites diários, aquecimento, horário e intervalo entre DMs
+- Limites diários, dias úteis, horário e intervalo entre DMs
+- Descoberta diária autônoma, idempotente e configurada por segmentos e cidades
 - Jobs duráveis, retry, dead-letter e recuperação após reinício
 - Experimentos com atribuição determinística e grupo de controle
 - Custo de IA por lead e por cliente ativo

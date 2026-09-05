@@ -4,6 +4,7 @@ import { addLead, startDiscovery, togglePause } from "./actions";
 import { database } from "@/db/client";
 import { leads, systemSettings } from "@/db/schema";
 import { getBusinessConfig } from "@/lib/business";
+import { getEnv } from "@/lib/env";
 import { pipelineLabels } from "@/lib/labels";
 
 export const dynamic = "force-dynamic";
@@ -14,6 +15,7 @@ function metricValue(query: string): number {
 
 export default function DashboardPage() {
   const business = getBusinessConfig();
+  const env = getEnv();
   const settings = database.db.select().from(systemSettings).where(eq(systemSettings.id, 1)).get();
   const recentLeads = database.db.select().from(leads).orderBy(desc(leads.createdAt)).limit(6).all();
   const leadCount = metricValue("SELECT COUNT(*) AS value FROM leads");
@@ -54,7 +56,7 @@ export default function DashboardPage() {
         </form>
       </section>
     </div>
-    <section className="card" style={{marginTop: 16}}><div className="card-header"><h2>Descoberta automática</h2><span className="status-pill">Chrome dedicado</span></div><form action={startDiscovery} className="form-grid"><div className="field full"><label htmlFor="keyword">Palavra-chave ou segmento</label><input id="keyword" name="keyword" placeholder="clínica estética são josé dos campos" required /></div><button className="button field full" type="submit">Adicionar busca à fila</button></form><p className="subtitle">A busca abre uma aba própria no perfil dedicado, cadastra perfis públicos sem duplicidade e fecha a aba ao terminar.</p></section>
+    <section className="card" style={{marginTop: 16}}><div className="card-header"><h2>Descoberta automática</h2><span className={`status-pill${env.DRY_RUN ? " paused" : ""}`}>{env.DRY_RUN ? "Simulação" : "Envio real"}</span></div><form action={startDiscovery} className="form-grid"><div className="field full"><label htmlFor="keyword">Palavra-chave ou segmento</label><input id="keyword" name="keyword" placeholder="clínica estética são josé dos campos" required /></div><button className="button field full" type="submit">Adicionar busca à fila</button></form><p className="subtitle">Uma busca descobre até 5 perfis públicos, filtra segmento e cidade, qualifica, cria a abordagem e envia pelo Chrome dedicado dentro dos limites configurados.</p>{business.autonomousDiscovery.enabled && <p className="subtitle">Rotina diária programada para começar em {business.autonomousDiscovery.startDate.split("-").reverse().join("/")}, somente de segunda a sexta, com até {business.autonomousDiscovery.dailyLeadLimit} leads por dia.</p>}</section>
     {!business.affiliateFunnelEnabled && <p className="subtitle">O funil de afiliados está implementado e permanece desativado até existir um link e uma remuneração oficialmente verificados.</p>}
   </>;
 }

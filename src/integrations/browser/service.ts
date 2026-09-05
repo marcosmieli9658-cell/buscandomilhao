@@ -7,7 +7,7 @@ import { getEnv } from "@/lib/env";
 import type { BrowserGateway } from "./gateway";
 
 function getZonedTimeParts(date: Date, timezone: string) {
-  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, hour12: false, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).formatToParts(date);
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, hour12: false, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short" }).formatToParts(date);
   return Object.fromEntries(parts.map((part) => [part.type, part.value]));
 }
 
@@ -17,22 +17,37 @@ export function assertOperatingLimits(now = new Date()): void {
   if (settings?.globallyPaused) throw new Error(`System is paused: ${settings.pauseReason ?? "operator"}.`);
   if (settings?.browserQueuePaused) throw new Error(`Browser queue is paused: ${settings.browserPauseReason ?? "integration alert"}.`);
   const parts = getZonedTimeParts(now, env.OPERATING_TIMEZONE);
+  const weekdayNumbers: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  const allowedDays = env.OPERATING_DAYS.split(",").map(Number);
+  if (!allowedDays.includes(weekdayNumbers[parts.weekday])) throw new Error(`Outside approved operating days (${env.OPERATING_DAYS}).`);
   const current = `${parts.hour}:${parts.minute}`;
   const [start, end] = env.OPERATING_HOURS.split("-");
   if (current < start || current > end) throw new Error(`Outside approved operating hours (${env.OPERATING_HOURS}).`);
 
   const dayStart = new Date(`${parts.year}-${parts.month}-${parts.day}T00:00:00-03:00`).getTime();
   const sentToday = database.sqlite.prepare("SELECT COUNT(*) AS count FROM messages WHERE channel = 'browser' AND delivery_state = 'sent' AND sent_at >= ?").get(dayStart) as { count: number };
-  const firstSend = database.sqlite.prepare("SELECT MIN(sent_at) AS first_sent FROM messages WHERE channel = 'browser' AND delivery_state = 'sent'").get() as { first_sent: number | null };
-  const week = firstSend.first_sent ? Math.floor((now.getTime() - firstSend.first_sent) / (7 * 86_400_000)) : 0;
-  const warmupLimit = Math.min(env.MAX_DMS_PER_DAY, 5 + week * 5);
-  if (sentToday.count >= warmupLimit) throw new Error(`Daily browser DM limit reached (${warmupLimit}).`);
+  if (sentToday.count >= env.MAX_DMS_PER_DAY) throw new Error(`Daily browser DM limit reached (${env.MAX_DMS_PER_DAY}).`);
 
   const last = database.sqlite.prepare("SELECT MAX(sent_at) AS last_sent FROM messages WHERE channel = 'browser' AND delivery_state = 'sent'").get() as { last_sent: number | null };
   if (last.last_sent) {
     const minimumGap = env.MIN_SECONDS_BETWEEN_DMS * 1000;
     if (now.getTime() - last.last_sent < minimumGap) throw new Error("Minimum interval between DMs has not elapsed.");
   }
+}
+
+export function nextBrowserSendAt(now = new Date(), random = Math.random): Date {
+  const env = getEnv();
+  const lastSent = database.sqlite.prepare("SELECT MAX(sent_at) AS value FROM messages WHERE channel = 'browser' AND delivery_state = 'sent'").get() as { value: number | null };
+  const lastScheduled = database.sqlite.prepare("SELECT MAX(run_at) AS value FROM jobs WHERE type = 'send_browser_dm' AND status IN ('pending', 'retry', 'running')").get() as { value: number | null };
+  if (!lastSent.value && !lastScheduled.value) return now;
+
+  const minimum = env.MIN_SECONDS_BETWEEN_DMS;
+  const maximum = env.MAX_SECONDS_BETWEEN_DMS;
+  const delaySeconds = Math.min(maximum, minimum + Math.floor(random() * (maximum - minimum + 1)));
+  const baseline = lastScheduled.value
+    ? Math.max(now.getTime(), lastScheduled.value, lastSent.value ?? 0)
+    : Math.max(now.getTime() - delaySeconds * 1000, lastSent.value ?? 0);
+  return new Date(baseline + delaySeconds * 1000);
 }
 
 export async function sendFirstContact(jobId: number, leadId: number, body: string, gateway: BrowserGateway, dryRun = getEnv().DRY_RUN) {

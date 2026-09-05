@@ -2,11 +2,13 @@
 
 Este sistema roda localmente. O banco, a sessão do Chrome e as credenciais permanecem na máquina do operador.
 
-## Situação da configuração — 03/09/2026
+## Situação da configuração, atualizada em 05/09/2026
 
 - Chave restrita da OpenAI criada no projeto `UpScale Instagram Sales Agent`, salva no `.env` local e validada com uma resposta real curta.
 - Credenciais locais da Meta preenchidas e validadas sem expor valores: app principal, app do produto Instagram, os dois segredos, token de acesso, token de verificação e conta profissional.
-- Operação protegida: `DRY_RUN=true`. A fila de navegador está em modo assistido pelo operador; jobs de navegador aguardam sem impedir o processamento de respostas oficiais da API.
+- Operação real ativada: `DRY_RUN=false`, Chrome dedicado conectado e fila autônoma liberada.
+- Rotina diária programada para começar em **07/09/2026**. Executa de segunda a sexta, entre 09:00 e 20:00, com até 50 leads por dia e intervalo fixo de 60 segundos entre primeiras mensagens.
+- Dez buscas de segmentos da UpScale em São José dos Campos abastecem a rotina diária. Cada busca coleta no máximo cinco perfis e o cadastro impede duplicidade entre dias.
 - Domínio `agencyupscale.com.br` associado ao portfólio UpScale com autorização específica e confirmado como `Verified` na Meta em 03/09. Apenas um TXT foi adicionado no DNS da Vercel; sua propagação pública foi confirmada e os registros anteriores foram preservados. Não foram atribuídos parceiros ou acessos adicionais.
 - O `CNPJ.pdf` já estava anexado nos dois campos de comprovação da Meta; os anexos foram confirmados visualmente, sem novo upload. A conexão empresarial foi comprovada pelo domínio, sem solicitar códigos ao sócio.
 - Verificação empresarial aprovada. A Central de Segurança mostra a empresa como `Verificada`.
@@ -14,17 +16,17 @@ Este sistema roda localmente. O banco, a sessão do Chrome e as credenciais perm
 - `instagram_business_basic`, `instagram_business_content_publish` e `instagram_business_manage_messages` aparecem como `Pronto para teste`. O token atual leu o perfil e a API de conversas com sucesso, sem retornar conteúdo privado no diagnóstico.
 - Webhook HTTPS configurado no produto correto, **Login da empresa no Instagram**. O campo `messages` está assinado no produto e na conta profissional. A rota pública aceita somente `/api/instagram/webhook`; outras rotas ficam inacessíveis.
 - Teste real concluído em 03/09: as respostas `Recebi 3` e `Recebi 4` foram entregues novamente pela Meta, validadas com a chave específica do produto, gravadas sem erro e fizeram o handoff `browser → api_active`. A resposta gerada pela IA ficou apenas em `dry_run` e não foi enviada.
-- Validação final concluída: lint, TypeScript, 19 testes e build de produção passaram.
+- Validação final concluída: lint, TypeScript, 23 testes e build de produção passaram.
 - `pnpm dev` inicia painel, worker, gateway restrito e Cloudflare Quick Tunnel. O túnel atual está ativo. Como a URL é temporária, quando ela mudar o callback do produto **Login da empresa no Instagram** precisa ser atualizado pelo navegador antes de receber novas mensagens.
-- O painel está em `http://localhost:3000`. Por preferência do operador, os primeiros contatos usam a sessão já aberta do Instagram no navegador controlado pelo Codex; não é necessário manter um segundo Chrome aberto.
+- O painel está em `http://localhost:3000`. Os primeiros contatos usam o Chrome dedicado conectado em `127.0.0.1:9222`.
 
-### Próxima retomada
+### Operação a partir de segunda-feira
 
-1. Manter `pnpm dev` rodando e abrir `http://localhost:3000`.
-2. Se o túnel for reiniciado, atualizar pelo navegador o callback do produto **Login da empresa no Instagram** com a nova URL exibida no terminal.
-3. Manter `DRY_RUN=true` enquanto revisar leads e textos.
-4. Para o primeiro contato, processar a fila pelo Codex usando a sessão já conectada do Instagram no navegador do operador.
-5. Depois da resposta do lead, conferir o handoff automático para `api_active`. Só trocar para `DRY_RUN=false` quando houver autorização para respostas reais da API.
+1. Manter o computador, o Chrome dedicado e `pnpm dev` ativos.
+2. Às 09:00, a partir de 07/09/2026, o worker cria a fila diária automaticamente nos dias úteis.
+3. Acompanhar leads, respostas, encaminhamentos e exceções no painel.
+4. Quando o lead demonstrar interesse e escolher WhatsApp, o agente envia o link do número comercial do Milton.
+5. Se o túnel reiniciar, confirmar que o callback do produto **Login da empresa no Instagram** acompanha a nova URL.
 
 O usuário prefere configurar os serviços pelo navegador aberto. Os contatos antigos do cadastro pertencem ao sócio; não solicitar códigos a ele sem combinar. O envio do CNPJ à Meta já foi concluído e a empresa foi verificada.
 
@@ -158,7 +160,7 @@ Fluxo recomendado:
 4. Verifique texto, screenshot, fila e timeline.
 5. Para o smoke test limitado, altere `DRY_RUN=false`, reinicie e use somente a conta de teste autorizada.
 6. Confirme o webhook e o handoff para a API.
-7. Comece o piloto com o aquecimento automático de 5 DMs por dia.
+7. Defina o limite diário, os dias e o intervalo aprovados pelo operador antes de iniciar.
 
 Qualquer alerta do Instagram, perda de sessão, erro anormal, duplicidade, opt-out elevado, divergência de canal ou teto de IA pausa a operação.
 

@@ -32,6 +32,7 @@ const envSchema = z.object({
   MAX_SECONDS_BETWEEN_DMS: z.coerce.number().int().min(60).default(240),
   OPERATING_HOURS: z.string().regex(/^\d{2}:\d{2}-\d{2}:\d{2}$/).default("09:00-20:00"),
   OPERATING_TIMEZONE: z.string().default("America/Sao_Paulo"),
+  OPERATING_DAYS: z.string().regex(/^[0-6](,[0-6])*$/).default("1,2,3,4,5"),
   DRY_RUN: z.string().transform((value) => value !== "false").default(true),
   WORKER_POLL_INTERVAL_MS: z.coerce.number().int().min(500).default(3000),
 });

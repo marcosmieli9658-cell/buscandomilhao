@@ -4,13 +4,14 @@ import { database } from "@/db/client";
 import { aiCalls, experimentAssignments, experiments, experimentVariants, leads, messages, systemSettings } from "@/db/schema";
 import { assignActiveVariant } from "@/features/experiments/service";
 import { discoverLead, markDoNotContact, transitionChannel, transitionPipeline } from "@/features/leads/service";
-import type { BrowserGateway } from "@/integrations/browser/gateway";
-import { sendFirstContact, assertOperatingLimits } from "@/integrations/browser/service";
+import { extractVisibleExternalUrl, inferSuggestedService, instagramSearchKeyword, profileMatchesQuery, type BrowserGateway } from "@/integrations/browser/gateway";
+import { sendFirstContact, assertOperatingLimits, nextBrowserSendAt } from "@/integrations/browser/service";
 import { sendInstagramApiMessage } from "@/integrations/instagram/api";
 import { verifyMetaSignature } from "@/integrations/instagram/signature";
 import { processInstagramWebhook } from "@/integrations/instagram/webhook";
 import { OpenAiConversationEngine } from "@/integrations/openai/engine";
 import { claimNextJob, enqueueJob, pauseBrowserQueue, recoverStaleJobs } from "@/worker/queue";
+import { isAutonomousDiscoveryWindow } from "@/worker/scheduler";
 import crypto from "node:crypto";
 import * as environment from "@/lib/env";
 
@@ -47,6 +48,23 @@ beforeEach(() => {
 });
 
 describe("critical autonomous sales flows", () => {
+  it("filters Instagram discovery by segment and requested city", () => {
+    expect(instagramSearchKeyword("clínica estética São José dos Campos")).toBe("clinica estetica sjc");
+    expect(profileMatchesQuery("clínica estética são josé dos campos", "Clínica de estética em São José dos Campos", true)).toBe(true);
+    expect(profileMatchesQuery("clínica estética são josé dos campos", "Portal de notícias de São José dos Campos", true)).toBe(false);
+    expect(profileMatchesQuery("clínica estética são josé dos campos", "Clínica de estética em Taubaté", true)).toBe(false);
+    expect(profileMatchesQuery("clínica estética são josé dos campos", "Churrascaria e bar em SJC", true)).toBe(false);
+    expect(profileMatchesQuery("fisioterapia são josé dos campos", "Fisioterapeuta esportiva em SJC", true)).toBe(true);
+    expect(profileMatchesQuery("arquiteto são josé dos campos", "Escritório de arquitetura em SJC", true)).toBe(true);
+  });
+
+  it("suggests an offer only from public website evidence", () => {
+    expect(inferSuggestedService("Clínica de estética em SJC")).toBe("site_creation");
+    expect(inferSuggestedService("Loja de roupas femininas", "https://linktr.ee/lojateste")).toBe("ecommerce");
+    expect(inferSuggestedService("Escritório de arquitetura", "https://arquiteturateste.com.br/")).toBe("site_diagnostic");
+    expect(extractVisibleExternalUrl("Veja nossos links em linktr.ee/clinicadravanessa")).toBe("https://linktr.ee/clinicadravanessa");
+  });
+
   it("deduplicates discovered leads", () => {
     const first = discoverLead({ funnel: "client", instagramHandle: "Empresa.Teste", source: "search", score: 70 });
     const second = discoverLead({ funnel: "client", instagramHandle: "@empresa.teste", source: "search", score: 70 });
@@ -73,6 +91,22 @@ describe("critical autonomous sales flows", () => {
     expect(lead?.pipelineState).toBe("contacted");
     await expect(sendFirstContact(11, leadId, "Duplicada", fakeBrowser, false)).rejects.toThrow();
     expect(database.db.select().from(messages).all()).toHaveLength(1);
+  });
+
+  it("spaces queued browser contacts inside the configured random interval", () => {
+    const now = new Date("2026-09-05T15:00:00.000Z");
+    expect(nextBrowserSendAt(now, () => 0)).toEqual(now);
+    enqueueJob("send_browser_dm", { leadId: 10 }, { dedupeKey: "scheduled-browser-1", runAt: now });
+    expect(nextBrowserSendAt(now, () => 0).getTime()).toBe(now.getTime() + 30_000);
+    expect(nextBrowserSendAt(now, () => 1).getTime()).toBe(now.getTime() + 60_000);
+  });
+
+  it("starts autonomous discovery on weekdays only and not before the approved date", () => {
+    const input = { timezone: "America/Sao_Paulo", operatingHours: "09:00-20:00", startDate: "2026-09-07", weekdays: [1, 2, 3, 4, 5] };
+    expect(isAutonomousDiscoveryWindow({ ...input, now: new Date("2026-09-05T15:00:00Z") })).toBe(false);
+    expect(isAutonomousDiscoveryWindow({ ...input, now: new Date("2026-09-07T11:59:00Z") })).toBe(false);
+    expect(isAutonomousDiscoveryWindow({ ...input, now: new Date("2026-09-07T12:00:00Z") })).toBe(true);
+    expect(isAutonomousDiscoveryWindow({ ...input, now: new Date("2026-09-12T15:00:00Z") })).toBe(false);
   });
 
   it("hands an inbound reply from browser ownership to the official API idempotently", async () => {

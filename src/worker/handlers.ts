@@ -4,7 +4,7 @@ import { exceptions, leads } from "@/db/schema";
 import { assignActiveVariant, recordExperimentConversion } from "@/features/experiments/service";
 import { discoverLead, markDoNotContact, scoreLead, transitionChannel, transitionPipeline } from "@/features/leads/service";
 import { PlaywrightCdpGateway, type BrowserGateway } from "@/integrations/browser/gateway";
-import { sendFirstContact } from "@/integrations/browser/service";
+import { nextBrowserSendAt, sendFirstContact } from "@/integrations/browser/service";
 import { sendInstagramApiMessage } from "@/integrations/instagram/api";
 import { OpenAiConversationEngine, type ConversationEngine } from "@/integrations/openai/engine";
 import { getBusinessConfig } from "@/lib/business";
@@ -50,10 +50,23 @@ async function handleDiscovery(job: DurableJob, gateway: BrowserGateway): Promis
   const keyword = job.payload.keyword;
   const funnel = job.payload.funnel === "affiliate" ? "affiliate" as const : "client" as const;
   if (typeof keyword !== "string" || !keyword.trim()) throw new Error("Discovery job has no keyword.");
-  const profiles = await gateway.discoverProfiles({ jobId: job.id, keyword, limit: 15 });
+  const requestedLimit = typeof job.payload.limit === "number" ? job.payload.limit : 5;
+  const profiles = await gateway.discoverProfiles({ jobId: job.id, keyword, limit: Math.max(1, Math.min(5, requestedLimit)) });
   for (const profile of profiles) {
-    const profileInput = { displayName: profile.displayName, bio: keyword, sourceKeyword: keyword };
-    const result = discoverLead({ funnel, instagramHandle: profile.handle, source: "instagram_search", ...profileInput, score: scoreLead(profileInput), metadata: { discoveryJobId: job.id } });
+    const profileInput = { displayName: profile.displayName, bio: profile.bio, location: keyword, segment: keyword, sourceKeyword: keyword };
+    const result = discoverLead({
+      funnel,
+      instagramHandle: profile.handle,
+      source: "instagram_search",
+      ...profileInput,
+      score: scoreLead(profileInput),
+      metadata: {
+        discoveryJobId: job.id,
+        websiteUrl: profile.websiteUrl ?? null,
+        suggestedService: profile.suggestedService ?? "google_business",
+        qualificationEvidence: profile.qualificationEvidence ?? null,
+      },
+    });
     enqueueJob("qualify_lead", { leadId: result.lead.id }, { dedupeKey: `qualify_lead:${result.lead.id}` });
   }
 }
@@ -65,7 +78,10 @@ async function handleGenerateFirstContact(job: DurableJob, engine: ConversationE
   if (!lead) throw new Error(`Lead ${leadId} not found.`);
   const variant = assignActiveVariant(leadId, lead.funnel);
   const body = variant?.content ?? generated.message;
-  enqueueJob("send_browser_dm", { leadId, body, variantId: variant?.id ?? null }, { dedupeKey: `send_browser_dm:${leadId}` });
+  enqueueJob("send_browser_dm", { leadId, body, variantId: variant?.id ?? null }, {
+    dedupeKey: `send_browser_dm:${leadId}`,
+    runAt: nextBrowserSendAt(),
+  });
 }
 
 async function handleBrowserSend(job: DurableJob, gateway: BrowserGateway): Promise<void> {
