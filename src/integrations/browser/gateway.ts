@@ -250,7 +250,10 @@ export class PlaywrightCdpGateway implements BrowserGateway {
         await messageButton.click();
         const composer = page.getByRole("textbox", { name: /mensagem|message/i }).or(page.locator('[contenteditable="true"]')).last();
         await composer.waitFor({ state: "visible", timeout: 15_000 });
-        await composer.pressSequentially(request.message, { delay: 45 + Math.floor(Math.random() * 35) });
+        await composer.pressSequentially(request.message, {
+          delay: 45 + Math.floor(Math.random() * 35),
+          timeout: 90_000,
+        });
         await page.waitForTimeout(600 + Math.floor(Math.random() * 700));
 
         if (request.dryRun) return { sent: false, dryRun: true, url: page.url() };

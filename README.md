@@ -17,7 +17,7 @@ Observar → Decidir → Agir → Medir → Aprender → Adaptar
 - Cadastro e mensagens protegidos contra duplicidade
 - Primeira DM pelo Chrome dedicado, com modo real ou simulação visíveis no painel
 - Webhook Meta com verificação HMAC e idempotência
-- Gateway público restrito ao webhook e túnel HTTPS com registro automático na Meta
+- Gateway público restrito ao webhook e túnel HTTPS com fallback automático entre provedores
 - Handoff atômico de propriedade navegador → API oficial
 - Motor de conversação estruturado com OpenAI
 - Afirmações comerciais limitadas ao arquivo de fatos verificados

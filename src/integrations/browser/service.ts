@@ -50,6 +50,25 @@ export function nextBrowserSendAt(now = new Date(), random = Math.random): Date 
   return new Date(baseline + delaySeconds * 1000);
 }
 
+function reschedulePendingBrowserContacts(sentAt: Date): void {
+  const minimumGap = getEnv().MIN_SECONDS_BETWEEN_DMS * 1000;
+  const queued = database.sqlite.prepare(`
+    SELECT id, run_at FROM jobs
+    WHERE type = 'send_browser_dm' AND status IN ('pending', 'retry')
+    ORDER BY run_at ASC, id ASC
+  `).all() as Array<{ id: number; run_at: number }>;
+  let nextAllowedAt = sentAt.getTime() + minimumGap;
+  const update = database.sqlite.prepare("UPDATE jobs SET run_at = ?, updated_at = ? WHERE id = ?");
+
+  database.sqlite.transaction(() => {
+    for (const job of queued) {
+      const scheduledAt = Math.max(job.run_at, nextAllowedAt);
+      if (scheduledAt !== job.run_at) update.run(scheduledAt, Date.now(), job.id);
+      nextAllowedAt = scheduledAt + minimumGap;
+    }
+  })();
+}
+
 export async function sendFirstContact(jobId: number, leadId: number, body: string, gateway: BrowserGateway, dryRun = getEnv().DRY_RUN) {
   assertOperatingLimits();
   const lead = database.db.select().from(leads).where(eq(leads.id, leadId)).get();
@@ -67,6 +86,7 @@ export async function sendFirstContact(jobId: number, leadId: number, body: stri
     tx.insert(events).values({ leadId, type: result.dryRun ? "browser_dm_dry_run" : "browser_dm_sent", source: "browser", payloadJson: JSON.stringify({ jobId }), occurredAt: now, createdAt: now, updatedAt: now }).run();
   });
   if (result.sent) {
+    reschedulePendingBrowserContacts(now);
     transitionChannel(leadId, "browser_contact_sent", "browser", "browser", "first DM sent");
     transitionChannel(leadId, "waiting_inbound_reply", "browser", "browser", "waiting for reply");
     if (lead.pipelineState === "qualified") transitionPipeline(leadId, "contacted", "browser", "first DM sent");

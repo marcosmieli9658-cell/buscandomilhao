@@ -101,6 +101,23 @@ describe("critical autonomous sales flows", () => {
     expect(nextBrowserSendAt(now, () => 1).getTime()).toBe(now.getTime() + 60_000);
   });
 
+  it("rebalances overdue browser contacts after a successful send", async () => {
+    const leadId = createQualifiedLead();
+    const overdue = new Date(Date.now() - 60_000);
+    enqueueJob("send_browser_dm", { leadId: 20 }, { dedupeKey: "overdue-browser-1", runAt: overdue });
+    enqueueJob("send_browser_dm", { leadId: 21 }, { dedupeKey: "overdue-browser-2", runAt: overdue });
+    const beforeSend = Date.now();
+
+    await sendFirstContact(12, leadId, "Olá!", fakeBrowser, false);
+
+    const queued = database.sqlite.prepare(`
+      SELECT run_at FROM jobs WHERE dedupe_key LIKE 'overdue-browser-%' ORDER BY run_at ASC
+    `).all() as Array<{ run_at: number }>;
+    expect(queued).toHaveLength(2);
+    expect(queued[0].run_at).toBeGreaterThanOrEqual(beforeSend + 30_000);
+    expect(queued[1].run_at - queued[0].run_at).toBeGreaterThanOrEqual(30_000);
+  });
+
   it("starts autonomous discovery on weekdays only and not before the approved date", () => {
     const input = { timezone: "America/Sao_Paulo", operatingHours: "09:00-20:00", startDate: "2026-09-07", weekdays: [1, 2, 3, 4, 5] };
     expect(isAutonomousDiscoveryWindow({ ...input, now: new Date("2026-09-05T15:00:00Z") })).toBe(false);

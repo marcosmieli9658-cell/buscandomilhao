@@ -75,7 +75,7 @@ async function waitForTunnel(tunnelOrigin) {
   throw new Error("O túnel HTTPS não ficou acessível dentro do prazo esperado.");
 }
 
-function openTunnel() {
+function openCloudflareTunnel() {
   return new Promise((resolve, reject) => {
     const tunnel = spawn("cloudflared", [
       "tunnel",
@@ -135,6 +135,61 @@ function openTunnel() {
   });
 }
 
+function openLocalhostRunTunnel() {
+  return new Promise((resolve, reject) => {
+    const tunnel = spawn("ssh", [
+      "-T",
+      "-o", "ExitOnForwardFailure=yes",
+      "-o", "StrictHostKeyChecking=no",
+      "-o", "UserKnownHostsFile=NUL",
+      "-o", "ServerAliveInterval=30",
+      "-R", "80:127.0.0.1:8788",
+      "nokey@localhost.run",
+    ], {
+      windowsHide: true,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let registrationStarted = false;
+    let settled = false;
+    let startupOutput = "";
+
+    const fail = async (error) => {
+      if (settled) return;
+      settled = true;
+      if (tunnel.exitCode === null) {
+        const exited = new Promise((done) => tunnel.once("exit", done));
+        tunnel.kill();
+        await exited;
+      }
+      reject(error);
+    };
+
+    const handleOutput = (chunk) => {
+      startupOutput = `${startupOutput}${chunk.toString()}`.slice(-16_000);
+      const match = startupOutput.match(/https:\/\/[a-z0-9.-]+\.lhr\.life/i);
+      if (!match || registrationStarted) return;
+      registrationStarted = true;
+      const tunnelOrigin = match[0];
+      console.log(`Túnel SSH criado, aguardando disponibilidade: ${tunnelOrigin}`);
+      waitForTunnel(tunnelOrigin)
+        .then(() => registerWebhook(tunnelOrigin))
+        .then(() => {
+          if (settled) return;
+          settled = true;
+          resolve(tunnel);
+        })
+        .catch(fail);
+    };
+
+    tunnel.stdout.on("data", handleOutput);
+    tunnel.stderr.on("data", handleOutput);
+    tunnel.once("error", () => fail(new Error("Não foi possível iniciar o túnel SSH alternativo.")));
+    tunnel.once("exit", (code) => {
+      if (!settled) fail(new Error(`O túnel SSH encerrou antes do registro do webhook (${code ?? "sem código"}).`));
+    });
+  });
+}
+
 let activeTunnel;
 let stopping = false;
 
@@ -147,12 +202,16 @@ for (const signal of ["SIGINT", "SIGTERM"]) {
 }
 
 let attempt = 1;
+let provider = "localhost.run";
 while (!activeTunnel && !stopping) {
   try {
-    activeTunnel = await openTunnel();
+    activeTunnel = provider === "localhost.run"
+      ? await openLocalhostRunTunnel()
+      : await openCloudflareTunnel();
   } catch (error) {
     const message = error instanceof Error ? error.message : "Falha ao registrar o webhook.";
-    console.error(`${message} Nova tentativa em instantes (tentativa ${attempt}).`);
+    console.error(`${message} Tentando o provedor alternativo em instantes (tentativa ${attempt}).`);
+    provider = provider === "localhost.run" ? "cloudflare" : "localhost.run";
     attempt += 1;
     await new Promise((resolve) => setTimeout(resolve, Math.min(2_000 * attempt, 30_000)));
   }

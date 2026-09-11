@@ -17,7 +17,7 @@ Este sistema roda localmente. O banco, a sessão do Chrome e as credenciais perm
 - Webhook HTTPS configurado no produto correto, **Login da empresa no Instagram**. O campo `messages` está assinado no produto e na conta profissional. A rota pública aceita somente `/api/instagram/webhook`; outras rotas ficam inacessíveis.
 - Teste real concluído em 03/09: as respostas `Recebi 3` e `Recebi 4` foram entregues novamente pela Meta, validadas com a chave específica do produto, gravadas sem erro e fizeram o handoff `browser → api_active`. A resposta gerada pela IA ficou apenas em `dry_run` e não foi enviada.
 - Validação final concluída: lint, TypeScript, 23 testes e build de produção passaram.
-- `pnpm dev` inicia painel, worker, gateway restrito e Cloudflare Quick Tunnel. O túnel atual está ativo. Como a URL é temporária, quando ela mudar o callback do produto **Login da empresa no Instagram** precisa ser atualizado pelo navegador antes de receber novas mensagens.
+- `pnpm dev` inicia painel, worker, gateway restrito e túnel HTTPS. O inicializador usa `localhost.run` e mantém o Cloudflare Quick Tunnel como alternativa. Como a URL é temporária, quando ela mudar o callback do produto **Login da empresa no Instagram** precisa ser atualizado pelo navegador antes de receber novas mensagens.
 - O painel está em `http://localhost:3000`. Os primeiros contatos usam o Chrome dedicado conectado em `127.0.0.1:9222`.
 
 ### Operação a partir de segunda-feira
@@ -43,7 +43,7 @@ Não execute uma segunda instância se a primeira ainda estiver ativa. O Cloudfl
 - Node.js 24 LTS
 - pnpm 11 ou superior
 - Google Chrome atual
-- `cloudflared` instalado e disponível no `PATH`
+- OpenSSH do Windows e `cloudflared` disponíveis no `PATH`
 - Conta profissional do Instagram da UpScale
 - Aplicativo da Meta com acesso à conta profissional
 - Projeto separado na plataforma da OpenAI
@@ -64,7 +64,7 @@ cp config/business.example.json config/business.json
 pnpm dev
 ```
 
-No Windows PowerShell, use `Copy-Item` no lugar de `cp` se necessário. O comando `pnpm dev` inicia painel, worker durável, gateway restrito do webhook e túnel HTTPS. Abra `http://localhost:3000`.
+No Windows PowerShell, use `Copy-Item` no lugar de `cp` se necessário. O comando `pnpm dev` inicia painel, worker durável, gateway restrito do webhook e túnel HTTPS com troca automática de provedor quando necessário. Abra `http://localhost:3000`.
 
 Este repositório da UpScale já possui `config/business.json` preenchido na máquina de operação. O arquivo é privado e ignorado pelo Git.
 
