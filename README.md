@@ -1,4 +1,4 @@
-# UpScale Instagram Sales Agent
+# Buscando Leads
 
 Sistema comercial local da UpScale Agency para descobrir, qualificar e acompanhar leads no Instagram com CRM auditável, worker durável e handoff seguro entre o navegador e a API oficial da Meta.
 
