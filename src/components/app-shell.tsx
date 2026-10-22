@@ -11,6 +11,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <Link href="/">Visão geral</Link>
         <Link href="/leads?funnel=client">Funil de clientes</Link>
         <Link href="/leads?funnel=affiliate">Funil de afiliados</Link>
+        <Link href="/approvals">Revisar mensagens</Link>
         <Link href="/operations">Operação e alertas</Link>
         <Link href="/experiments">Experimentos</Link>
         <Link href="/settings">Configurações</Link>

@@ -8,25 +8,56 @@ O projeto implementa o ciclo:
 Observar → Decidir → Agir → Medir → Aprender → Adaptar
 ```
 
-## Estado atual
+## Estado atual | 22/10/2026
 
-Retomado em 22/10/2026 com a configuração comercial da Blessia Labs, Instagram
-`@agenciablessialabs`, site `https://blessialabs.com.br` e contato comercial de Marcos.
-A prospecção permanece pausada por decisão do operador: pausa geral e fila do navegador
-ativas, `DRY_RUN=true` e descoberta diária desativada. O painel pode funcionar sozinho.
-A API da Meta reconheceu a conta Blessia Labs, e os dois modelos configurados da OpenAI
-responderam ao teste mínimo com dados artificiais. Chrome dedicado, webhook e envio
-controlado ainda precisam de validação antes de retomar mensagens. Os registros de
-setembro em `SETUP.md` são históricos.
+A ferramenta está configurada para Blessia Labs, Instagram `@agenciablessialabs`,
+site `https://blessialabs.com.br` e contato comercial de Marcos. O Chrome dedicado
+está conectado por TCP em loopback, e o usuário confirmou a conta logada
+`@agenciablessialabs`.
+
+A operação continua **pausada**: pausa geral e fila do navegador ativas,
+`DRY_RUN=true`, descoberta automática desativada e **nenhum worker iniciado**.
+Nenhuma mensagem foi enviada nesta retomada.
+
+A revisão individual está implementada em <http://127.0.0.1:3000/approvals>, com
+**3 rascunhos pendentes**. O fluxo é salvar o texto, conferir o histórico do Direct
+na primeira abordagem e aprovar cada mensagem. Aprovar não despausa a operação.
+Respostas e acompanhamentos também exigem aprovação; simulação e envio incerto
+não são repetidos automaticamente. Os 32 contatos com envio registrado e as duas
+tentativas antigas incertas estão bloqueados para novas primeiras abordagens.
+
+O usuário abriu manualmente o túnel temporário
+`https://stated-bird-ago-future.trycloudflare.com`. Os callbacks do app principal e
+do produto Instagram foram atualizados. Passaram 12 verificações locais e 8 públicas.
+Um teste sintético da Meta recebeu HTTP 200 com assinatura válida, mas
+`received=0`: isso não comprova ingestão de mensagens nem handoff. A mensagem real
+enviada pelo usuário às 09h48 BRT, de `@marcos_mieli` para `@agenciablessialabs`, foi
+vista na interface e lida pela API oficial, mas ainda não apareceu no CRM.
+Às 10h02, a assinatura existente `messages` da mesma conta foi reaplicada uma vez,
+com HTTP 200 e `success=true`; GET antes/depois preservou o mesmo vínculo e campo.
+O segundo teste, `Teste conexão Blessia 2`, também chegou ao Instagram às 10h03m33s,
+confirmado pela API, mas não ao CRM. Às 10h05, o callback retornou HTTP 530 e depois
+`ENOTFOUND`; não havia processo `cloudflared.exe` ativo. O túnel está encerrado.
+O horário exato da queda não foi observado. Painel e receptor local continuam ativos;
+o recebimento externo não está validado de ponta a ponta.
+
+A revisão automática bloqueou a iniciação do túnel pelo agente. Esse bloqueio não
+deve ser contornado. A URL atual depende da janela de túnel aberta pelo usuário;
+quando ela mudar, os dois callbacks precisam ser atualizados e revalidados.
+
+A migração aditiva de aprovações foi aplicada após backup do banco. A versão passou
+em **57 testes offline**, TypeScript e ESLint focal. Procedimento, backup e limites
+estão em `SETUP.md`; os registros de setembro são históricos.
 
 - Dashboard e CRM em PT-BR
 - Funis separados de clientes e afiliados
 - Funil de afiliados desativado até existir programa verificado
 - Descoberta em aba isolada do Chrome por CDP
 - Cadastro e mensagens protegidos contra duplicidade
+- Revisão individual em `/approvals`, com edição, aprovação e rejeição do texto exato
 - Primeira DM pelo Chrome dedicado, com modo real ou simulação visíveis no painel
 - Webhook Meta com verificação HMAC e idempotência
-- Gateway público restrito ao webhook e túnel HTTPS com fallback automático entre provedores
+- Gateway público restrito ao webhook; túnel temporário aberto manualmente pelo operador nesta retomada
 - Handoff atômico de propriedade navegador → API oficial
 - Motor de conversação estruturado com OpenAI
 - Afirmações comerciais limitadas ao arquivo de fatos verificados
@@ -74,7 +105,7 @@ Esse comando executa lint, TypeScript strict, testes e build de produção. Os t
 ```text
 config/business.json         fatos reais e ICP, ignorado pelo Git
 src/app                      painel Next.js e webhook
-src/features                 regras de leads e experimentos
+src/features                 regras de leads, aprovações e experimentos
 src/integrations/browser     Playwright via CDP
 src/integrations/instagram   webhook e API oficial
 src/integrations/openai      decisões estruturadas e custo

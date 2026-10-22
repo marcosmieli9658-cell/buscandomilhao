@@ -1,0 +1,80 @@
+BLESSIA LABS | REVISÃO INDIVIDUAL DE ABORDAGENS
+Atualizado em 22/10/2026. Status: 3 rascunhos pendentes, 0 aprovados.
+
+DECISÃO VIGENTE
+O usuário escolheu revisar cada mensagem no painel. Não há aprovação de modelos
+fixos nem autorização de reescrita e envio automático pela IA.
+Painel de revisão: http://127.0.0.1:3000/approvals
+
+COMO REVISAR
+1. Confira o destinatário e a fonte pública indicada.
+2. Abra o Direct na conta da Blessia e confira se já houve qualquer mensagem,
+   inclusive manualmente ou quando a conta usava o nome antigo. Essa checagem
+   ainda está pendente nos três contatos abaixo. Não marque sem conferir.
+3. Edite o texto se necessário e salve a alteração antes de aprovar.
+4. Aprove apenas a mensagem individual revisada. Aprovar não retoma a operação
+   nem desativa a simulação. Os envios continuam pausados.
+
+Os 32 contatos com envio registrado e as duas tentativas antigas incertas não
+foram recolocados na fila. A ausência destes três novos @ no histórico do CRM
+não comprova que nunca receberam mensagem fora da ferramenta.
+
+1. R9 BARBEARIA | @r9barbeariaoficial
+Contato #35, rascunho #1, versão 3.
+Localização: São José dos Campos/SP.
+Fonte oficial: https://r9barbearia.wixsite.com/site
+Contexto verificado: Site apresenta serviços de barbearia, botão de agendamento online e endereço no Jardim Morumbi, em São José dos Campos. O próprio site aponta para @r9barbeariaoficial.
+
+Mensagem para revisar:
+Oi! Sou o Marcos, da Blessia Labs. Trabalho com criação e reforma de sites. Vi o site da R9 e queria entender: ele atende bem a rotina da barbearia hoje?
+
+Limite: histórico no Direct ainda não conferido. A leitura pública não comprova
+problemas no site nem interesse em contratar. Texto pendente de aprovação individual.
+
+2. DQ FISIOTERAPIA ESPECIALIZADA | @dqfisioterapia
+Contato #36, rascunho #2, versão 2.
+Localização: São José dos Campos/SP.
+Fonte oficial: https://www.dqfisioterapia.com.br/contato
+Contexto verificado: Página de contato lista duas unidades na Vila Adyana, em São José dos Campos, e acesso para agendamento de consulta pelo WhatsApp. O próprio site aponta para @dqfisioterapia.
+
+Mensagem para revisar:
+Oi! Sou o Marcos, da Blessia Labs. A gente cria e reforma sites. Vi o site da DQ e queria saber: ele facilita os pedidos de agendamento da clínica hoje?
+
+Limite: histórico no Direct ainda não conferido. A leitura pública não comprova
+problemas no site nem interesse em contratar. Texto pendente de aprovação individual.
+
+3. LE PALMIER RESTAURANT | @lepalmier.restaurant
+Contato #37, rascunho #3, versão 2.
+Localização: São José dos Campos/SP.
+Fonte oficial: https://lepalmieroficial.com.br/
+Contexto verificado: Site apresenta cardápio, reservas e eventos, com endereço na Vila Ema, em São José dos Campos. O próprio site aponta para @lepalmier.restaurant.
+
+Mensagem para revisar:
+Oi! Sou o Marcos, da Blessia Labs. Trabalho com criação e reforma de sites. Vi o site do Le Palmier e queria entender: ele atende bem quem procura informações e reservas hoje?
+
+Limite: histórico no Direct ainda não conferido. A leitura pública não comprova
+problemas no site nem interesse em contratar. Texto pendente de aprovação individual.
+
+MODELOS OPCIONAIS, NÃO APROVADOS
+As sugestões abaixo são apenas pontos de partida para outros rascunhos.
+Cada destinatário e cada texto precisam de revisão própria no painel.
+
+1. Geral, quando não há confirmação sobre o site
+Oi! Sou o Marcos, da Blessia Labs. A gente cria e reforma sites para empresas. Hoje vocês já têm um site ou concentram o atendimento por aqui?
+
+2. Reforma, somente após conferir o site real
+Oi! Sou o Marcos, da Blessia Labs. Vi o site de vocês e queria entender: ele ainda atende bem o que a empresa precisa hoje?
+
+3. Serviços com agendamento
+Oi! Sou o Marcos, da Blessia Labs. Criamos sites para apresentar serviços e facilitar o contato. Hoje, como o cliente faz para agendar com vocês?
+
+4. Lojas físicas, sem presumir ausência de e-commerce
+Oi! Sou o Marcos, da Blessia Labs. A gente ajuda lojas a começar a vender online. Ter uma loja virtual está nos planos de vocês?
+
+5. Perfil da Empresa no Google, após identificar o perfil
+Oi! Sou o Marcos, da Blessia Labs. Trabalhamos com a presença de empresas no Google. Vocês já têm alguém cuidando das informações e atualizações do perfil por lá?
+
+Não adicionar preços, descontos, resultados, elogios ou afirmações sem evidência.
+Não inventar inspeção do site, problema técnico ou interesse comercial.
+Respostas, continuações e variações também dependem de aprovação individual.
+Nenhuma aprovação ou mensagem enviada nesta preparação.

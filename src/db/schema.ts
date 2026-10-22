@@ -108,6 +108,24 @@ export const auditLogs = sqliteTable("audit_logs", {
   ...timestamps,
 });
 
+export const messageApprovals = sqliteTable("message_approvals", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  leadId: integer("lead_id").notNull().references(() => leads.id, { onDelete: "cascade" }),
+  channel: text("channel", { enum: ["browser", "api"] }).notNull(),
+  purpose: text("purpose", { enum: ["first_contact", "reply", "follow_up"] }).notNull(),
+  recipientHandle: text("recipient_handle").notNull(),
+  recipientScopedId: text("recipient_scoped_id"),
+  body: text("body").notNull(),
+  reason: text("reason").notNull(),
+  status: text("status", { enum: ["pending", "approved", "rejected", "sending", "sent", "uncertain", "simulated"] }).notNull().default("pending"),
+  version: integer("version").notNull().default(1),
+  directHistoryChecked: integer("direct_history_checked", { mode: "boolean" }).notNull().default(false),
+  sourceKey: text("source_key"),
+  approvedAt: integer("approved_at", { mode: "timestamp_ms" }),
+  sentAt: integer("sent_at", { mode: "timestamp_ms" }),
+  ...timestamps,
+}, (table) => [uniqueIndex("message_approvals_source_unique").on(table.sourceKey), index("message_approvals_status_idx").on(table.status, table.createdAt)]);
+
 export const aiCalls = sqliteTable("ai_calls", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   leadId: integer("lead_id").references(() => leads.id, { onDelete: "set null" }),

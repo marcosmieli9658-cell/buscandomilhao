@@ -5,7 +5,7 @@ import { aiCalls, experimentAssignments, experiments, experimentVariants, leads,
 import { assignActiveVariant } from "@/features/experiments/service";
 import { discoverLead, markDoNotContact, transitionChannel, transitionPipeline } from "@/features/leads/service";
 import { extractVisibleExternalUrl, inferSuggestedService, instagramSearchKeyword, profileMatchesQuery, type BrowserGateway } from "@/integrations/browser/gateway";
-import { sendFirstContact, assertOperatingLimits, nextBrowserSendAt } from "@/integrations/browser/service";
+import { assertOperatingLimits, nextBrowserSendAt } from "@/integrations/browser/service";
 import { sendInstagramApiMessage } from "@/integrations/instagram/api";
 import { verifyMetaSignature } from "@/integrations/instagram/signature";
 import { processInstagramWebhook } from "@/integrations/instagram/webhook";
@@ -13,6 +13,7 @@ import { OpenAiConversationEngine } from "@/integrations/openai/engine";
 import { claimNextJob, enqueueJob, pauseBrowserQueue, recoverStaleJobs } from "@/worker/queue";
 import { isAutonomousDiscoveryWindow } from "@/worker/scheduler";
 import crypto from "node:crypto";
+import { approvedFixture, sendReviewedFirstContact as sendFirstContact } from "./approval-fixtures";
 import * as environment from "@/lib/env";
 
 const baseEnvironment = environment.getEnv();
@@ -28,7 +29,7 @@ function resetDatabase() {
   database.sqlite.exec(`
     DELETE FROM browser_artifacts; DELETE FROM exceptions; DELETE FROM webhook_events;
     DELETE FROM experiment_assignments; DELETE FROM experiment_variants; DELETE FROM experiments;
-    DELETE FROM ai_calls; DELETE FROM audit_logs; DELETE FROM events; DELETE FROM jobs; DELETE FROM messages; DELETE FROM leads; DELETE FROM system_settings;
+    DELETE FROM message_approvals; DELETE FROM ai_calls; DELETE FROM audit_logs; DELETE FROM events; DELETE FROM jobs; DELETE FROM messages; DELETE FROM leads; DELETE FROM system_settings;
   `);
   const now = new Date();
   database.db.insert(systemSettings).values({ id: 1, createdAt: now, updatedAt: now }).run();
@@ -144,8 +145,10 @@ describe("critical autonomous sales flows", () => {
   it("blocks API sends outside the 24-hour eligibility window", async () => {
     configureApi();
     const leadId = createQualifiedLead();
-    database.db.update(leads).set({ instagramScopedId: "igsid-expired", channelState: "api_active", channelOwner: "api", lastInboundAt: new Date(Date.now() - 25 * 60 * 60_000) }).where(eq(leads.id, leadId)).run();
-    await expect(sendInstagramApiMessage(leadId, "Mensagem tardia")).rejects.toThrow(/expired/);
+    database.db.update(leads).set({ instagramScopedId: "igsid-expired", channelState: "api_active", channelOwner: "api", lastInboundAt: new Date() }).where(eq(leads.id, leadId)).run();
+    const approval = approvedFixture(leadId, "Mensagem tardia", "api");
+    database.db.update(leads).set({ lastInboundAt: new Date(Date.now() - 25 * 60 * 60_000) }).where(eq(leads.id, leadId)).run();
+    await expect(sendInstagramApiMessage(leadId, "Mensagem tardia", approval.id)).rejects.toThrow(/expired/);
   });
 
   it("simulates API responses without network calls or delivery state changes", async () => {
@@ -153,8 +156,9 @@ describe("critical autonomous sales flows", () => {
     const leadId = createQualifiedLead();
     database.db.update(leads).set({ instagramScopedId: "igsid-test", channelState: "api_active", channelOwner: "api", lastInboundAt: new Date() }).where(eq(leads.id, leadId)).run();
     const network = vi.spyOn(globalThis, "fetch");
-    expect((await sendInstagramApiMessage(leadId, "Simulação")).dry_run).toBe(true);
-    await sendInstagramApiMessage(leadId, "Simulação");
+    const approval = approvedFixture(leadId, "Simulação", "api");
+    expect((await sendInstagramApiMessage(leadId, "Simulação", approval.id)).dry_run).toBe(true);
+    await expect(sendInstagramApiMessage(leadId, "Simulação", approval.id)).rejects.toThrow(/aprovação/);
     expect(network).not.toHaveBeenCalled();
     expect(database.db.select().from(messages).all()).toHaveLength(1);
     expect(database.db.select().from(messages).get()?.deliveryState).toBe("dry_run");
@@ -165,10 +169,10 @@ describe("critical autonomous sales flows", () => {
     configureApi(true);
     const leadId = createQualifiedLead();
     database.db.update(leads).set({ instagramScopedId: "igsid-test", channelState: "api_active", channelOwner: "api", lastInboundAt: new Date() }).where(eq(leads.id, leadId)).run();
-    await sendInstagramApiMessage(leadId, "Mensagem");
+    await sendInstagramApiMessage(leadId, "Mensagem", approvedFixture(leadId, "Mensagem", "api").id);
     configureApi(false);
     const network = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ message_id: "mid-test" }), { status: 200 }));
-    expect((await sendInstagramApiMessage(leadId, "Mensagem")).dry_run).toBe(false);
+    expect((await sendInstagramApiMessage(leadId, "Mensagem", approvedFixture(leadId, "Mensagem", "api").id)).dry_run).toBe(false);
     expect(network).toHaveBeenCalledOnce();
     expect(database.db.select().from(messages).all()).toHaveLength(2);
   });
@@ -176,9 +180,11 @@ describe("critical autonomous sales flows", () => {
   it("blocks direct API sends while the operation is paused", async () => {
     configureApi();
     const leadId = createQualifiedLead();
+    database.db.update(leads).set({ instagramScopedId: "igsid-paused", channelState: "api_active", channelOwner: "api", lastInboundAt: new Date() }).where(eq(leads.id, leadId)).run();
+    const approval = approvedFixture(leadId, "Bloqueada", "api");
     database.db.update(systemSettings).set({ globallyPaused: true }).where(eq(systemSettings.id, 1)).run();
     const network = vi.spyOn(globalThis, "fetch");
-    await expect(sendInstagramApiMessage(leadId, "Bloqueada")).rejects.toThrow(/paused/);
+    await expect(sendInstagramApiMessage(leadId, "Bloqueada", approval.id)).rejects.toThrow(/paused/);
     expect(network).not.toHaveBeenCalled();
   });
 

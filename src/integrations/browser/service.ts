@@ -3,13 +3,11 @@ import { eq } from "drizzle-orm";
 import { database } from "@/db/client";
 import { events, leads, messages, systemSettings } from "@/db/schema";
 import { transitionChannel, transitionPipeline } from "@/features/leads/service";
+import { assertFirstContactEligible, claimMessageApproval, finishMessageApproval } from "@/features/approvals/service";
 import { getEnv } from "@/lib/env";
+import { BrowserSendDeferredError, getZonedTimeParts, nextOperatingTime } from "./scheduling";
+export { nextBrowserSendAt } from "./scheduling";
 import type { BrowserGateway } from "./gateway";
-
-function getZonedTimeParts(date: Date, timezone: string) {
-  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, hour12: false, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short" }).formatToParts(date);
-  return Object.fromEntries(parts.map((part) => [part.type, part.value]));
-}
 
 export function assertOperatingLimits(now = new Date()): void {
   const env = getEnv();
@@ -19,42 +17,27 @@ export function assertOperatingLimits(now = new Date()): void {
   const parts = getZonedTimeParts(now, env.OPERATING_TIMEZONE);
   const weekdayNumbers: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
   const allowedDays = env.OPERATING_DAYS.split(",").map(Number);
-  if (!allowedDays.includes(weekdayNumbers[parts.weekday])) throw new Error(`Outside approved operating days (${env.OPERATING_DAYS}).`);
+  if (!allowedDays.includes(weekdayNumbers[parts.weekday])) throw new BrowserSendDeferredError(`Outside approved operating days (${env.OPERATING_DAYS}).`, nextOperatingTime(now));
   const current = `${parts.hour}:${parts.minute}`;
   const [start, end] = env.OPERATING_HOURS.split("-");
-  if (current < start || current > end) throw new Error(`Outside approved operating hours (${env.OPERATING_HOURS}).`);
+  if (current < start || current > end) throw new BrowserSendDeferredError(`Outside approved operating hours (${env.OPERATING_HOURS}).`, nextOperatingTime(now));
 
   const dayStart = new Date(`${parts.year}-${parts.month}-${parts.day}T00:00:00-03:00`).getTime();
   const sentToday = database.sqlite.prepare("SELECT COUNT(*) AS count FROM messages WHERE channel = 'browser' AND delivery_state = 'sent' AND sent_at >= ?").get(dayStart) as { count: number };
-  if (sentToday.count >= env.MAX_DMS_PER_DAY) throw new Error(`Daily browser DM limit reached (${env.MAX_DMS_PER_DAY}).`);
+  if (sentToday.count >= env.MAX_DMS_PER_DAY) throw new BrowserSendDeferredError(`Daily browser DM limit reached (${env.MAX_DMS_PER_DAY}).`, nextOperatingTime(new Date(now.getTime() + 24 * 60 * 60_000)));
 
   const last = database.sqlite.prepare("SELECT MAX(sent_at) AS last_sent FROM messages WHERE channel = 'browser' AND delivery_state = 'sent'").get() as { last_sent: number | null };
   if (last.last_sent) {
     const minimumGap = env.MIN_SECONDS_BETWEEN_DMS * 1000;
-    if (now.getTime() - last.last_sent < minimumGap) throw new Error("Minimum interval between DMs has not elapsed.");
+    if (now.getTime() - last.last_sent < minimumGap) throw new BrowserSendDeferredError("Minimum interval between DMs has not elapsed.", nextOperatingTime(new Date(last.last_sent + minimumGap)));
   }
-}
-
-export function nextBrowserSendAt(now = new Date(), random = Math.random): Date {
-  const env = getEnv();
-  const lastSent = database.sqlite.prepare("SELECT MAX(sent_at) AS value FROM messages WHERE channel = 'browser' AND delivery_state = 'sent'").get() as { value: number | null };
-  const lastScheduled = database.sqlite.prepare("SELECT MAX(run_at) AS value FROM jobs WHERE type = 'send_browser_dm' AND status IN ('pending', 'retry', 'running')").get() as { value: number | null };
-  if (!lastSent.value && !lastScheduled.value) return now;
-
-  const minimum = env.MIN_SECONDS_BETWEEN_DMS;
-  const maximum = env.MAX_SECONDS_BETWEEN_DMS;
-  const delaySeconds = Math.min(maximum, minimum + Math.floor(random() * (maximum - minimum + 1)));
-  const baseline = lastScheduled.value
-    ? Math.max(now.getTime(), lastScheduled.value, lastSent.value ?? 0)
-    : Math.max(now.getTime() - delaySeconds * 1000, lastSent.value ?? 0);
-  return new Date(baseline + delaySeconds * 1000);
 }
 
 function reschedulePendingBrowserContacts(sentAt: Date): void {
   const minimumGap = getEnv().MIN_SECONDS_BETWEEN_DMS * 1000;
   const queued = database.sqlite.prepare(`
     SELECT id, run_at FROM jobs
-    WHERE type = 'send_browser_dm' AND status IN ('pending', 'retry')
+    WHERE type IN ('send_browser_dm', 'send_approved_browser') AND status IN ('pending', 'retry')
     ORDER BY run_at ASC, id ASC
   `).all() as Array<{ id: number; run_at: number }>;
   let nextAllowedAt = sentAt.getTime() + minimumGap;
@@ -69,27 +52,51 @@ function reschedulePendingBrowserContacts(sentAt: Date): void {
   })();
 }
 
-export async function sendFirstContact(jobId: number, leadId: number, body: string, gateway: BrowserGateway, dryRun = getEnv().DRY_RUN) {
-  assertOperatingLimits();
-  const lead = database.db.select().from(leads).where(eq(leads.id, leadId)).get();
-  if (!lead) throw new Error(`Lead ${leadId} not found.`);
-  if (lead.doNotContact) throw new Error("Lead is on the permanent do-not-contact list.");
-  if (lead.channelOwner !== "browser" || lead.channelState !== "browser_contact_pending") throw new Error("Browser does not own this conversation.");
-  const dedupeKey = crypto.createHash("sha256").update(`first_dm:${leadId}`).digest("hex");
-  const duplicate = database.sqlite.prepare("SELECT id FROM messages WHERE dedupe_key = ?").get(dedupeKey);
-  if (duplicate) throw new Error("Duplicate first contact blocked.");
+function prepareFirstContact(jobId: number, leadId: number, body: string, dryRun: boolean, approvalId?: number) {
+  return database.sqlite.transaction(() => {
+    assertOperatingLimits();
+    assertFirstContactEligible(leadId, jobId);
+    const approval = claimMessageApproval({ id: approvalId, leadId, channel: "browser", body });
+    const lead = database.db.select().from(leads).where(eq(leads.id, leadId)).get()!;
+    const handle = approval.recipientHandle;
+    const hash = crypto.createHash("sha256").update(`first_dm:${leadId}`).digest("hex");
+    const dedupeKey = `${dryRun ? "dry_run" : "reserved"}:${hash}`;
+    const metadata = { jobId, instagramHandle: handle, instagramScopedId: lead.instagramScopedId, firstContactAttempt: "reserved", approvalId: approval.id };
+    const reservation = dryRun ? null : database.db.insert(messages).values({
+      leadId, direction: "outbound", channel: "browser", body, deliveryState: "planned", dedupeKey,
+      metadataJson: JSON.stringify(metadata), createdAt: new Date(), updatedAt: new Date(),
+    }).returning({ id: messages.id }).get();
+    return { lead, dedupeKey, metadata, reservation, approval };
+  }).immediate();
+}
 
-  const result = await gateway.sendFirstMessage({ jobId, handle: lead.instagramHandle, message: body, dryRun });
-  const now = new Date();
-  database.db.transaction((tx) => {
-    tx.insert(messages).values({ leadId, direction: "outbound", channel: "browser", body, deliveryState: result.dryRun ? "dry_run" : "sent", dedupeKey, metadataJson: JSON.stringify({ url: result.url }), sentAt: result.sent ? now : null, createdAt: now, updatedAt: now }).run();
-    tx.insert(events).values({ leadId, type: result.dryRun ? "browser_dm_dry_run" : "browser_dm_sent", source: "browser", payloadJson: JSON.stringify({ jobId }), occurredAt: now, createdAt: now, updatedAt: now }).run();
-  });
-  if (result.sent) {
-    reschedulePendingBrowserContacts(now);
-    transitionChannel(leadId, "browser_contact_sent", "browser", "browser", "first DM sent");
-    transitionChannel(leadId, "waiting_inbound_reply", "browser", "browser", "waiting for reply");
-    if (lead.pipelineState === "qualified") transitionPipeline(leadId, "contacted", "browser", "first DM sent");
+export async function sendFirstContact(jobId: number, leadId: number, body: string, gateway: BrowserGateway, dryRun = getEnv().DRY_RUN, approvalId?: number) {
+  dryRun = dryRun || getEnv().DRY_RUN;
+  const { lead, dedupeKey, metadata, reservation, approval } = prepareFirstContact(jobId, leadId, body, dryRun, approvalId);
+  try {
+    const result = await gateway.sendFirstMessage({ jobId, handle: lead.instagramHandle, message: approval.body, dryRun });
+    if (!dryRun && (!result.sent || result.dryRun)) throw new Error("Browser send was not confirmed. Reservation retained for manual review.");
+    if (dryRun && (result.sent || !result.dryRun)) throw new Error("Unexpected browser result during simulation. Manual review required.");
+    const now = new Date();
+    database.db.transaction((tx) => {
+      if (reservation) {
+        tx.update(messages).set({ deliveryState: "sent", metadataJson: JSON.stringify({ ...metadata, firstContactAttempt: "confirmed", url: result.url }), sentAt: now, updatedAt: now }).where(eq(messages.id, reservation.id)).run();
+      } else {
+        tx.insert(messages).values({ leadId, direction: "outbound", channel: "browser", body: approval.body, deliveryState: "dry_run", dedupeKey, metadataJson: JSON.stringify({ url: result.url, approvalId: approval.id }), createdAt: now, updatedAt: now }).onConflictDoNothing().run();
+      }
+      tx.insert(events).values({ leadId, type: result.dryRun ? "browser_dm_dry_run" : "browser_dm_sent", source: "browser", payloadJson: JSON.stringify({ jobId, approvalId: approval.id }), occurredAt: now, createdAt: now, updatedAt: now }).run();
+      finishMessageApproval(approval.id, result.dryRun ? "simulated" : "sent");
+    });
+    if (result.sent) {
+      reschedulePendingBrowserContacts(now);
+      transitionChannel(leadId, "browser_contact_sent", "browser", "browser", "first DM sent");
+      transitionChannel(leadId, "waiting_inbound_reply", "browser", "browser", "waiting for reply");
+      if (lead.pipelineState === "discovered") transitionPipeline(leadId, "qualified", "browser", "operator-approved first contact");
+      if (["discovered", "qualified"].includes(lead.pipelineState)) transitionPipeline(leadId, "contacted", "browser", "first DM sent");
+    }
+    return result;
+  } catch (error) {
+    finishMessageApproval(approval.id, "uncertain");
+    throw error;
   }
-  return result;
 }

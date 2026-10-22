@@ -21,11 +21,16 @@ export function enqueueJob(type: string, payload: Record<string, unknown>, optio
 }
 
 export function recoverStaleJobs(staleAfterMs = 5 * 60_000): number {
-  const result = database.sqlite.prepare(`
-    UPDATE jobs SET status = 'retry', locked_at = NULL, locked_by = NULL, updated_at = ?
-    WHERE status = 'running' AND locked_at < ?
-  `).run(Date.now(), Date.now() - staleAfterMs);
-  return result.changes;
+  return database.sqlite.transaction(() => {
+    const cutoff = Date.now() - staleAfterMs;
+    database.sqlite.prepare(`UPDATE message_approvals SET status = 'uncertain', version = version + 1, updated_at = ?
+      WHERE status = 'sending' AND id IN (SELECT json_extract(payload_json, '$.approvalId') FROM jobs
+        WHERE status = 'running' AND locked_at < ? AND type IN ('send_approved_browser', 'send_approved_api'))`).run(Date.now(), cutoff);
+    return database.sqlite.prepare(`
+      UPDATE jobs SET status = 'retry', locked_at = NULL, locked_by = NULL, updated_at = ?
+      WHERE status = 'running' AND locked_at < ?
+    `).run(Date.now(), cutoff).changes;
+  }).immediate();
 }
 
 export function claimNextJob(workerId: string): DurableJob | null {
@@ -33,7 +38,7 @@ export function claimNextJob(workerId: string): DurableJob | null {
     const settings = database.sqlite.prepare("SELECT globally_paused, browser_queue_paused FROM system_settings WHERE id = 1").get() as { globally_paused: number; browser_queue_paused: number } | undefined;
     if (settings?.globally_paused) return null;
     const browserFilter = settings?.browser_queue_paused
-      ? "AND type NOT IN ('discover_instagram', 'send_browser_dm')"
+      ? "AND type NOT IN ('discover_instagram', 'send_browser_dm', 'send_approved_browser')"
       : "";
     const row = database.sqlite.prepare(`
       SELECT * FROM jobs
@@ -53,7 +58,7 @@ export function claimNextJob(workerId: string): DurableJob | null {
 }
 
 export function completeJob(jobId: number): void {
-  database.sqlite.prepare("UPDATE jobs SET status = 'completed', completed_at = ?, locked_at = NULL, locked_by = NULL, updated_at = ? WHERE id = ?").run(Date.now(), Date.now(), jobId);
+  database.sqlite.prepare("UPDATE jobs SET status = 'completed', completed_at = ?, locked_at = NULL, locked_by = NULL, updated_at = ? WHERE id = ? AND status = 'running'").run(Date.now(), Date.now(), jobId);
 }
 
 export function failJob(job: DurableJob, error: unknown): void {

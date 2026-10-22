@@ -5,13 +5,35 @@ Este sistema roda localmente. O banco, a sessão do Chrome e as credenciais perm
 ## Estado vigente em 22/10/2026
 
 - Marca e configuração comercial atualizadas para Blessia Labs, com site `https://blessialabs.com.br`, Instagram `@agenciablessialabs` e Marcos em Desenvolvimento e Comercial pelo WhatsApp (12) 99678-7273. Yasmin cuida do suporte.
-- Prospecção pausada por decisão explícita do operador: pausa geral e fila do navegador ativas no banco, `DRY_RUN=true` e descoberta autônoma desativada.
-- Somente o painel foi retomado. Worker, gateway, túnel e Chrome dedicado não foram iniciados.
-- Com Node 24 e as dependências locais existentes, abrir apenas o painel com `node node_modules/next/dist/bin/next dev --hostname 127.0.0.1 --port 3000`.
-- O comando `pnpm dev` continua iniciando todos os componentes; não usá-lo para simples consulta ao CRM.
-- A API da Meta confirmou `@agenciablessialabs`, nome Blessia Labs e o mesmo ID configurado. Os dois modelos configurados da OpenAI responderam com sucesso ao teste mínimo de Responses, com dados artificiais e `store=false` (118 tokens no total). A chave não permite listar o catálogo de modelos (`api.model.read`), mas a geração foi validada; nenhuma permissão, chave ou modelo foi alterado.
-- Chrome dedicado, webhook e um envio controlado ainda precisam de validação atual antes de retomar a prospecção. A confirmação de setembro não comprova esses componentes hoje.
-- Banco íntegro com 34 leads preservados. Duas primeiras mensagens antigas esgotaram tentativas por ausência do botão de mensagem no perfil; não foram reenviadas.
+- Prospecção pausada por decisão explícita do operador: pausa geral e fila do navegador ativas no banco, `DRY_RUN=true` e descoberta autônoma desativada. **Sem worker ativo e sem envio de mensagens nesta retomada.** Aprovar um texto não altera nenhuma dessas condições.
+- Painel e gateway local estão ativos em `127.0.0.1:3000` e `127.0.0.1:8788`. O Chrome dedicado está conectado por TCP em `127.0.0.1:9222`, e o usuário confirmou `@agenciablessialabs` na janela dedicada.
+- Com Node 24 e as dependências locais existentes, abrir apenas o painel com `node node_modules/next/dist/bin/next dev --hostname 127.0.0.1 --port 3000`. O comando `pnpm dev` inicia todos os componentes e não deve ser usado para simples consulta ao CRM.
+- A API da Meta confirmou `@agenciablessialabs`, nome Blessia Labs e o mesmo ID configurado. Os dois modelos configurados da OpenAI responderam ao teste mínimo de Responses com dados artificiais e `store=false` (118 tokens no total). A chave não permite listar o catálogo (`api.model.read`), mas a geração foi validada; nenhuma permissão, chave ou modelo foi alterado.
+- O receptor e o gateway passaram em **12 verificações locais**: challenge, rejeição de token/assinatura inválidos, payload vazio assinado pelos dois segredos, rota restrita e método não permitido. Nenhum evento de lead foi criado nesses testes.
+- A revisão automática rejeitou a iniciação do Cloudflare pelo agente, inclusive após pedido explícito do operador, sem detalhe além de bloqueio por política. **Não contornar por outro provedor, ferramenta ou script.** O arquivo `ABRIR-WEBHOOK-BLESSIA.cmd` foi preparado para execução manual pelo usuário; o agente não o executou.
+- O usuário abriu manualmente o túnel `https://stated-bird-ago-future.trycloudflare.com`, direcionado ao gateway existente. Os callbacks do app principal e do produto Instagram foram atualizados para `https://stated-bird-ago-future.trycloudflare.com/api/instagram/webhook`. Passaram **8 verificações públicas**. A URL é temporária e depende da janela do túnel permanecer aberta pelo usuário; se mudar, atualizar os dois callbacks e revalidar.
+- O teste sintético da Meta foi aceito com HMAC válido e HTTP 200, porém retornou `received=0`. O payload de teste não foi ingerido pelo parser de mensagens. Isso comprova o acesso ao receptor e a verificação de assinatura, **não a ingestão nem o handoff**.
+- Teste real das **09h48 BRT**: a mensagem do usuário de `@marcos_mieli` para `@agenciablessialabs` foi vista na interface e lida pela API oficial, mas ainda não apareceu no CRM. O recebimento permanece em diagnóstico; não considerar o webhook operacional de ponta a ponta.
+- Às **10h02 BRT**, reaplicada uma única vez a assinatura existente `messages` via `POST /me/subscribed_apps`, conforme o [contrato oficial da Meta](https://developers.facebook.com/documentation/instagram-platform/webhooks/setup). HTTP 200 e `success=true`; GET antes/depois preservou o mesmo ID de assinatura e campo. Sem DELETE, novos campos, novas permissões ou troca de credenciais. Solicitado segundo evento controlado do usuário, `Teste conexão Blessia 2`. A mensagem anterior não foi importada artificialmente nem tratada como recebida pelo webhook. Evidência local: `logs/reaplicacao-assinatura-messages-2026-10-22.json`.
+- **Bloqueio atual, 10h05 BRT:** o segundo teste chegou ao Instagram às 10h03m33s, confirmado pela API oficial, mas não ao CRM. Callback público retornou HTTP 530 e depois `ENOTFOUND`; nenhum processo `cloudflared.exe` ativo. O túnel encerrou em horário não observado. Painel e gateway locais continuam ativos. Nenhum reinício pelo agente; não contornar o bloqueio anterior. Solicitado ao usuário conferir a janela e informar eventual nova URL já aberta. Evidência: `logs/segundo-teste-real-2026-10-22.json`. Uma URL nova exige atualizar os dois callbacks e testar o recebimento antes de liberar envios.
+- Os 34 leads anteriores foram preservados. **32 contatos com envio registrado estão bloqueados** para novas primeiras abordagens. As **duas tentativas antigas incertas** também estão bloqueadas; seus jobs não foram reabertos nem reenviados. Mensagens manuais fora do banco e mudança de @ sem ID conhecido exigem conferência humana no Direct.
+- A revisão individual solicitada pelo usuário foi implementada em `/approvals`. Há **3 rascunhos `pending`**, sem aprovação ou envio. Os cinco exemplos em `docs/ABORDAGENS-PARA-APROVACAO.txt` são referências; não autorizam disparos nem substituem a revisão individual.
+- A migração aditiva `drizzle/0001_message_approvals.sql` foi aplicada após o backup `backups/upscale-agent-2026-10-22T12-40-23-557Z.db`. Não removeu dados anteriores. A implementação passou em **57 testes offline**, TypeScript e ESLint focal.
+
+### Revisar as mensagens no painel
+
+1. Abrir <http://127.0.0.1:3000/approvals> e conferir destinatário, canal e motivo.
+2. Ler e editar a mensagem. **Salvar** qualquer alteração antes de aprovar; a versão salva é a que poderá ser enviada.
+3. Para uma primeira abordagem, abrir o Direct e conferir que nunca enviamos mensagem àquela conta. Só então marcar a confirmação de histórico.
+4. **Aprovar cada mensagem** individualmente, ou rejeitar. Troca de destinatário, versão desatualizada, contato anterior ou tentativa incerta impedem a aprovação/envio.
+5. A aprovação enfileira somente o texto exato salvo. **Não libera a pausa geral, a fila do navegador, o modo real ou a descoberta.** A retomada operacional exige decisão separada do usuário e o diagnóstico do recebimento concluído.
+
+Primeiras abordagens, respostas pela API e acompanhamentos passam pela revisão humana.
+Jobs antigos sem aprovação não podem enviar. Antes da ação externa, a aprovação é
+reservada atomicamente; falha ou interrupção fica incerta e exige conferência manual.
+`simulated` significa simulação, sem envio; não vira envio real automaticamente e
+exige nova revisão. `sending`/`uncertain` não autorizam repetição. A janela de resposta
+da API, o opt-out e a identidade do destinatário são conferidos novamente no envio.
 
 ## Histórico da configuração em 05/09/2026
 

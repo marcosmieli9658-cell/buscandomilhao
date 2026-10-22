@@ -1,13 +1,14 @@
 import { eq } from "drizzle-orm";
 import { database } from "@/db/client";
 import { exceptions, leads } from "@/db/schema";
-import { assignActiveVariant, recordExperimentConversion } from "@/features/experiments/service";
+import { assignActiveVariant } from "@/features/experiments/service";
 import { discoverLead, markDoNotContact, scoreLead, transitionChannel, transitionPipeline } from "@/features/leads/service";
 import { PlaywrightCdpGateway, type BrowserGateway } from "@/integrations/browser/gateway";
-import { nextBrowserSendAt, sendFirstContact } from "@/integrations/browser/service";
+import { sendFirstContact } from "@/integrations/browser/service";
+import { BrowserSendDeferredError } from "@/integrations/browser/scheduling";
 import { sendInstagramApiMessage } from "@/integrations/instagram/api";
 import { OpenAiConversationEngine, type ConversationEngine } from "@/integrations/openai/engine";
-import { getBusinessConfig } from "@/lib/business";
+import { assertFirstContactEligible, createMessageDraft, getMessageDraft } from "@/features/approvals/service";
 import { getEnv } from "@/lib/env";
 import type { DurableJob } from "./queue";
 import { enqueueJob } from "./queue";
@@ -73,21 +74,33 @@ async function handleDiscovery(job: DurableJob, gateway: BrowserGateway): Promis
 
 async function handleGenerateFirstContact(job: DurableJob, engine: ConversationEngine): Promise<void> {
   const leadId = requireLeadId(job);
+  assertFirstContactEligible(leadId);
   const generated = await engine.generateFirstContact(leadId);
   const lead = database.db.select().from(leads).where(eq(leads.id, leadId)).get();
   if (!lead) throw new Error(`Lead ${leadId} not found.`);
   const variant = assignActiveVariant(leadId, lead.funnel);
   const body = variant?.content ?? generated.message;
-  enqueueJob("send_browser_dm", { leadId, body, variantId: variant?.id ?? null }, {
-    dedupeKey: `send_browser_dm:${leadId}`,
-    runAt: nextBrowserSendAt(),
-  });
+  createMessageDraft({ leadId, channel: "browser", purpose: "first_contact", body,
+    reason: generated.variantReason, sourceKey: `first_contact:${job.id}` });
 }
 
-async function handleBrowserSend(job: DurableJob, gateway: BrowserGateway): Promise<void> {
-  const leadId = requireLeadId(job);
-  if (typeof job.payload.body !== "string") throw new Error("Browser DM job has no message body.");
-  await sendFirstContact(job.id, leadId, job.payload.body, gateway, getEnv().DRY_RUN);
+async function handleApprovedSend(job: DurableJob, gateway: BrowserGateway): Promise<void> {
+  const id = job.payload.approvalId;
+  if (typeof id !== "number") throw new Error("Job sem aprovação humana.");
+  const draft = getMessageDraft(id);
+  if (draft.status !== "approved" || draft.version !== job.payload.approvalVersion) throw new Error("A aprovação mudou ou já foi utilizada.");
+  if (draft.channel === "browser" && job.type === "send_approved_browser") {
+    try {
+      await sendFirstContact(job.id, draft.leadId, draft.body, gateway, getEnv().DRY_RUN, draft.id);
+    } catch (error) {
+      if (!(error instanceof BrowserSendDeferredError)) throw error;
+      database.sqlite.prepare(`UPDATE jobs SET status = 'pending', run_at = ?, attempts = max(0, attempts - 1),
+        locked_at = NULL, locked_by = NULL, updated_at = ? WHERE id = ? AND status = 'running'`)
+        .run(error.retryAt.getTime(), Date.now(), job.id);
+    }
+  } else if (draft.channel === "api" && job.type === "send_approved_api") {
+    await sendInstagramApiMessage(draft.leadId, draft.body, draft.id);
+  } else throw new Error("O canal da aprovação não corresponde ao job.");
 }
 
 async function handleInbound(job: DurableJob, engine: ConversationEngine): Promise<void> {
@@ -112,21 +125,8 @@ async function handleInbound(job: DurableJob, engine: ConversationEngine): Promi
     return;
   }
   if (!decision.message) throw new Error(`AI action ${decision.action} requires a message.`);
-  const delivery = await sendInstagramApiMessage(leadId, decision.message);
-  if (delivery.dry_run) return;
-  if (decision.intention === "interested") {
-    const lead = database.db.select().from(leads).where(eq(leads.id, leadId)).get();
-    if (lead?.pipelineState === "replied") transitionPipeline(leadId, "interested", "ai", decision.reasoningSummary);
-    recordExperimentConversion(leadId, "interested");
-  }
-  if (decision.action === "send_to_whatsapp") {
-    const lead = database.db.select().from(leads).where(eq(leads.id, leadId)).get();
-    if (lead?.funnel === "client") {
-      if (lead.pipelineState === "replied") transitionPipeline(leadId, "interested", "ai", "qualified WhatsApp handoff");
-      transitionPipeline(leadId, "whatsapp_handoff", "ai", getBusinessConfig().whatsappLink);
-      recordExperimentConversion(leadId, "whatsapp_handoff");
-    }
-  }
+  createMessageDraft({ leadId, channel: "api", purpose: "reply", body: decision.message,
+    reason: decision.reasoningSummary, sourceKey: `reply:${job.id}` });
 }
 
 async function handleFollowUp(job: DurableJob, engine: ConversationEngine): Promise<void> {
@@ -134,7 +134,14 @@ async function handleFollowUp(job: DurableJob, engine: ConversationEngine): Prom
   const lead = database.db.select().from(leads).where(eq(leads.id, leadId)).get();
   if (!lead || lead.doNotContact || lead.channelOwner !== "api" || lead.channelState !== "api_active") return;
   const decision = await engine.decideNextAction(leadId);
-  if (decision.message && ["reply", "ask", "handle_objection"].includes(decision.action)) await sendInstagramApiMessage(leadId, decision.message);
+  if (decision.intention === "opt_out") {
+    markDoNotContact(leadId, "Instagram opt-out classified during follow-up", "ai");
+    return;
+  }
+  if (decision.message && ["reply", "ask", "handle_objection"].includes(decision.action)) {
+    createMessageDraft({ leadId, channel: "api", purpose: "follow_up", body: decision.message,
+      reason: decision.reasoningSummary, sourceKey: `follow_up:${job.id}` });
+  }
 }
 
 export async function handleJob(job: DurableJob, dependencies: WorkerDependencies): Promise<void> {
@@ -142,7 +149,9 @@ export async function handleJob(job: DurableJob, dependencies: WorkerDependencie
     case "discover_instagram": return handleDiscovery(job, dependencies.browserGateway);
     case "qualify_lead": return handleQualify(job);
     case "generate_first_contact": return handleGenerateFirstContact(job, dependencies.conversationEngine);
-    case "send_browser_dm": return handleBrowserSend(job, dependencies.browserGateway);
+    case "send_browser_dm": throw new Error("Job antigo sem aprovação humana. Revise a mensagem no painel.");
+    case "send_approved_browser":
+    case "send_approved_api": return handleApprovedSend(job, dependencies.browserGateway);
     case "process_inbound": return handleInbound(job, dependencies.conversationEngine);
     case "follow_up": return handleFollowUp(job, dependencies.conversationEngine);
     default: throw new Error(`Unknown job type: ${job.type}.`);
