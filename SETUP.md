@@ -2,7 +2,21 @@
 
 Este sistema roda localmente. O banco, a sessão do Chrome e as credenciais permanecem na máquina do operador.
 
-## Situação da configuração, atualizada em 05/09/2026
+## Estado vigente em 22/10/2026
+
+- Marca e configuração comercial atualizadas para Blessia Labs, com site `https://blessialabs.com.br`, Instagram `@agenciablessialabs` e Marcos em Desenvolvimento e Comercial pelo WhatsApp (12) 99678-7273. Yasmin cuida do suporte.
+- Prospecção pausada por decisão explícita do operador: pausa geral e fila do navegador ativas no banco, `DRY_RUN=true` e descoberta autônoma desativada.
+- Somente o painel foi retomado. Worker, gateway, túnel e Chrome dedicado não foram iniciados.
+- Com Node 24 e as dependências locais existentes, abrir apenas o painel com `node node_modules/next/dist/bin/next dev --hostname 127.0.0.1 --port 3000`.
+- O comando `pnpm dev` continua iniciando todos os componentes; não usá-lo para simples consulta ao CRM.
+- A API da Meta confirmou `@agenciablessialabs`, nome Blessia Labs e o mesmo ID configurado. Os dois modelos configurados da OpenAI responderam com sucesso ao teste mínimo de Responses, com dados artificiais e `store=false` (118 tokens no total). A chave não permite listar o catálogo de modelos (`api.model.read`), mas a geração foi validada; nenhuma permissão, chave ou modelo foi alterado.
+- Chrome dedicado, webhook e um envio controlado ainda precisam de validação atual antes de retomar a prospecção. A confirmação de setembro não comprova esses componentes hoje.
+- Banco íntegro com 34 leads preservados. Duas primeiras mensagens antigas esgotaram tentativas por ausência do botão de mensagem no perfil; não foram reenviadas.
+
+## Histórico da configuração em 05/09/2026
+
+Os itens abaixo registram a configuração daquela data. O estado vigente acima prevalece
+sobre as referências históricas a modo real, filas liberadas e rotina automática.
 
 - Chave restrita da OpenAI criada no projeto `UpScale Instagram Sales Agent`, salva no `.env` local e validada com uma resposta real curta.
 - Credenciais locais da Meta preenchidas e validadas sem expor valores: app principal, app do produto Instagram, os dois segredos, token de acesso, token de verificação e conta profissional.
@@ -25,7 +39,7 @@ Este sistema roda localmente. O banco, a sessão do Chrome e as credenciais perm
 1. Manter o computador, o Chrome dedicado e `pnpm dev` ativos.
 2. Às 09:00, a partir de 07/09/2026, o worker cria a fila diária automaticamente nos dias úteis.
 3. Acompanhar leads, respostas, encaminhamentos e exceções no painel.
-4. Quando o lead demonstrar interesse e escolher WhatsApp, o agente envia o link do número comercial do Milton.
+4. Quando uma operação de envio for novamente autorizada e o lead escolher WhatsApp, o destino comercial atual é Marcos, (12) 99678-7273.
 5. Se o túnel reiniciar, confirmar que o callback do produto **Login da empresa no Instagram** acompanha a nova URL.
 
 O usuário prefere configurar os serviços pelo navegador aberto. Os contatos antigos do cadastro pertencem ao sócio; não solicitar códigos a ele sem combinar. O envio do CNPJ à Meta já foi concluído e a empresa foi verificada.

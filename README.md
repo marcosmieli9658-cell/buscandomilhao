@@ -1,6 +1,6 @@
 # Buscando Leads
 
-Sistema comercial local da UpScale Agency para descobrir, qualificar e acompanhar leads no Instagram com CRM auditável, worker durável e handoff seguro entre o navegador e a API oficial da Meta.
+Sistema comercial local da Blessia Labs para descobrir, qualificar e acompanhar leads no Instagram com CRM auditável, worker durável e handoff seguro entre o navegador e a API oficial da Meta.
 
 O projeto implementa o ciclo:
 
@@ -9,6 +9,15 @@ Observar → Decidir → Agir → Medir → Aprender → Adaptar
 ```
 
 ## Estado atual
+
+Retomado em 22/10/2026 com a configuração comercial da Blessia Labs, Instagram
+`@agenciablessialabs`, site `https://blessialabs.com.br` e contato comercial de Marcos.
+A prospecção permanece pausada por decisão do operador: pausa geral e fila do navegador
+ativas, `DRY_RUN=true` e descoberta diária desativada. O painel pode funcionar sozinho.
+A API da Meta reconheceu a conta Blessia Labs, e os dois modelos configurados da OpenAI
+responderam ao teste mínimo com dados artificiais. Chrome dedicado, webhook e envio
+controlado ainda precisam de validação antes de retomar mensagens. Os registros de
+setembro em `SETUP.md` são históricos.
 
 - Dashboard e CRM em PT-BR
 - Funis separados de clientes e afiliados
@@ -31,6 +40,17 @@ Observar → Decidir → Agir → Medir → Aprender → Adaptar
 - Backup e restauração do SQLite
 
 ## Executar
+
+Para abrir somente o painel local nesta retomada, com as dependências já instaladas:
+
+```powershell
+node node_modules/next/dist/bin/next dev --hostname 127.0.0.1 --port 3000
+```
+
+Abra <http://127.0.0.1:3000>. Esse comando não inicia worker, gateway nem túnel.
+Os envios e a descoberta continuam pausados até autorização específica do operador.
+
+Para uma instalação nova ou uma operação completa autorizada:
 
 ```bash
 pnpm install
@@ -77,4 +97,4 @@ Detalhes técnicos estão em [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) e as l
 
 ## Origem
 
-Construído a partir do prompt público [Buscando 1 Milhão](https://github.com/soumatheusgomes/buscandomilhao), adaptado para a operação e para as regras comerciais da UpScale Agency.
+Construído a partir do prompt público [Buscando 1 Milhão](https://github.com/soumatheusgomes/buscandomilhao), adaptado para a operação e para as regras comerciais da Blessia Labs.
