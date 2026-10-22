@@ -1,13 +1,13 @@
 import crypto from "node:crypto";
 import { eq } from "drizzle-orm";
 import { database } from "@/db/client";
-import { events, leads, messages, systemSettings } from "@/db/schema";
+import { events, exceptions, jobs, leads, messageApprovals, messages, systemSettings } from "@/db/schema";
 import { transitionChannel, transitionPipeline } from "@/features/leads/service";
 import { assertFirstContactEligible, claimMessageApproval, finishMessageApproval } from "@/features/approvals/service";
 import { getEnv } from "@/lib/env";
 import { BrowserSendDeferredError, getZonedTimeParts, nextOperatingTime } from "./scheduling";
 export { nextBrowserSendAt } from "./scheduling";
-import type { BrowserGateway } from "./gateway";
+import { instagramRequestsDisabledErrors, type BrowserGateway } from "./gateway";
 
 export function assertOperatingLimits(now = new Date()): void {
   const env = getEnv();
@@ -75,6 +75,33 @@ export async function sendFirstContact(jobId: number, leadId: number, body: stri
   const { lead, dedupeKey, metadata, reservation, approval } = prepareFirstContact(jobId, leadId, body, dryRun, approvalId);
   try {
     const result = await gateway.sendFirstMessage({ jobId, handle: lead.instagramHandle, message: approval.body, dryRun });
+    if (result.blocked) {
+      if (dryRun || result.sent || result.dryRun || !reservation || result.blocked.reasonCode !== "instagram_new_message_requests_disabled"
+        || !instagramRequestsDisabledErrors.includes(result.blocked.observedError) || !result.blocked.proofPath || !/^[a-f0-9]{64}$/.test(result.blocked.proofSha256)) {
+        throw new Error("Invalid platform rejection result. Reservation retained for manual review.");
+      }
+      const now = new Date();
+      const reason = "Instagram recusou a solicitação: o perfil não aceita novas mensagens de todos. Tentativa bloqueada, sem repetição automática.";
+      database.db.transaction((tx) => {
+        const evidence = { ...result.blocked!, threadUrl: result.url, jobId, approvalId: approval.id };
+        tx.update(messages).set({ deliveryState: "blocked", metadataJson: JSON.stringify({ ...metadata, firstContactAttempt: "platform_blocked", platformBlock: evidence }), updatedAt: now })
+          .where(eq(messages.id, reservation.id)).run();
+        tx.update(messageApprovals).set({ status: "rejected", version: approval.version + 1, updatedAt: now })
+          .where(eq(messageApprovals.id, approval.id)).run();
+        // The writes above hold the transaction's lock. Preserve any newer inbound/human handoff,
+        // while the blocked message still prevents another first-contact attempt for this identity.
+        const current = tx.select().from(leads).where(eq(leads.id, leadId)).get();
+        if (current && current.channelOwner === "browser" && current.channelState === "browser_contact_pending" && !current.lastInboundAt && !current.doNotContact) {
+          // A platform restriction is not an opt-out. Keep doNotContact unchanged.
+          tx.update(leads).set({ channelState: "blocked", channelOwner: "none", pipelineState: "closed", nextActionAt: null, version: current.version + 1, updatedAt: now })
+            .where(eq(leads.id, leadId)).run();
+        }
+        tx.update(jobs).set({ status: "dead_letter", lastError: reason, lockedAt: null, lockedBy: null, updatedAt: now }).where(eq(jobs.id, jobId)).run();
+        tx.insert(events).values({ leadId, type: "browser_dm_platform_blocked", source: "browser", payloadJson: JSON.stringify(evidence), occurredAt: now, createdAt: now, updatedAt: now }).run();
+        tx.insert(exceptions).values({ leadId, jobId, code: result.blocked!.reasonCode, message: reason, detailsJson: JSON.stringify(evidence), status: "resolved", resolvedAt: now, createdAt: now, updatedAt: now }).run();
+      });
+      return result;
+    }
     if (!dryRun && (!result.sent || result.dryRun)) throw new Error("Browser send was not confirmed. Reservation retained for manual review.");
     if (dryRun && (result.sent || !result.dryRun)) throw new Error("Unexpected browser result during simulation. Manual review required.");
     const now = new Date();
@@ -89,10 +116,16 @@ export async function sendFirstContact(jobId: number, leadId: number, body: stri
     });
     if (result.sent) {
       reschedulePendingBrowserContacts(now);
-      transitionChannel(leadId, "browser_contact_sent", "browser", "browser", "first DM sent");
-      transitionChannel(leadId, "waiting_inbound_reply", "browser", "browser", "waiting for reply");
-      if (lead.pipelineState === "discovered") transitionPipeline(leadId, "qualified", "browser", "operator-approved first contact");
-      if (["discovered", "qualified"].includes(lead.pipelineState)) transitionPipeline(leadId, "contacted", "browser", "first DM sent");
+      database.sqlite.transaction(() => {
+        // Inbound may have handed the conversation to the API while the gateway awaited confirmation.
+        // Read under the write lock; never replay the pre-send browser state over that newer state.
+        const current = database.db.select().from(leads).where(eq(leads.id, leadId)).get();
+        if (!current || current.channelOwner !== "browser" || current.channelState !== "browser_contact_pending" || current.lastInboundAt) return;
+        transitionChannel(leadId, "browser_contact_sent", "browser", "browser", "first DM sent");
+        transitionChannel(leadId, "waiting_inbound_reply", "browser", "browser", "waiting for reply");
+        if (current.pipelineState === "discovered") transitionPipeline(leadId, "qualified", "browser", "operator-approved first contact");
+        if (["discovered", "qualified"].includes(current.pipelineState)) transitionPipeline(leadId, "contacted", "browser", "first DM sent");
+      }).immediate();
     }
     return result;
   } catch (error) {

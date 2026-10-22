@@ -40,7 +40,7 @@ function identity(leadId: number) {
 export function assertFirstContactEligible(leadId: number, currentJobId = -1): void {
   const { lead, handle, ids } = identity(leadId);
   const history = database.sqlite.prepare(`SELECT lead_id, delivery_state, metadata_json FROM messages
-    WHERE direction = 'outbound' AND delivery_state IN ('sent', 'delivered', 'planned')`).all() as Array<{ lead_id: number; delivery_state: string; metadata_json: string }>;
+    WHERE direction = 'outbound' AND delivery_state IN ('sent', 'delivered', 'planned', 'blocked')`).all() as Array<{ lead_id: number; delivery_state: string; metadata_json: string }>;
   for (const previous of history) {
     let metadata: Record<string, unknown> = {};
     try {
@@ -49,7 +49,11 @@ export function assertFirstContactEligible(leadId: number, currentJobId = -1): v
     } catch { /* Legacy rows may not have valid metadata. */ }
     const same = ids.has(previous.lead_id) || metadata.instagramHandle === handle
       || Boolean(lead.instagramScopedId && metadata.instagramScopedId === lead.instagramScopedId);
-    if (same && (previous.delivery_state !== "planned" || metadata.firstContactAttempt)) {
+    const priorContact = ["sent", "delivered"].includes(previous.delivery_state);
+    const uncertainAttempt = previous.delivery_state === "planned" && Boolean(metadata.firstContactAttempt);
+    const platformRejection = previous.delivery_state === "blocked" && metadata.firstContactAttempt === "platform_blocked";
+    if (same && platformRejection) throw new Error("Contato bloqueado: Instagram recusou novas solicitações. Não repetir automaticamente.");
+    if (same && (priorContact || uncertainAttempt || platformRejection)) {
       throw new Error("Contato anterior ou envio incerto bloqueado. Revisão manual necessária. (Previous contact / uncertain attempt)");
     }
   }

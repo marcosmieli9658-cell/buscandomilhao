@@ -18,7 +18,17 @@ export interface BrowserSendResult {
   sent: boolean;
   dryRun: boolean;
   url: string;
+  blocked?: {
+    reasonCode: "instagram_new_message_requests_disabled";
+    observedError: (typeof instagramRequestsDisabledErrors)[number];
+    proofPath: string;
+    proofSha256: string;
+  };
 }
+
+export const instagramRequestsDisabledError = "This account can't receive your message because they don't allow new message requests from everyone.";
+export const instagramRequestsDisabledErrors = [instagramRequestsDisabledError,
+  "Essa conta não pode receber sua mensagem porque não aceita novas solicitações de contato de todos."] as const;
 
 export interface DiscoveredProfile {
   handle: string;

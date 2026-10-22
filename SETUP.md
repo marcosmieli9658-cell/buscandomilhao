@@ -2,7 +2,133 @@
 
 Este sistema roda localmente. O banco, a sessão do Chrome e as credenciais permanecem na máquina do operador.
 
-## Estado vigente em 22/10/2026
+## Checkpoint operacional final — 22/10/2026, 12h38min07s BRT
+
+Auditoria final **aprovada**, com prova em
+`logs/operator-assisted/batch-audit-2026-10-22T15-38-07-791Z.json`.
+Backup final criado após o lote:
+`backups/upscale-agent-2026-10-22T15-40-00-304Z.db`.
+
+| Escopo | Enviadas | Recusas | Indisponível sem tentativa | Total |
+| --- | ---: | ---: | ---: | ---: |
+| Aprovações 4–51, lote autorizado | 43 | 4 (13, 36, 42, 49) | 1 (16) | 48 |
+| DQ e Le Palmier, fora desse lote | 0 | 2 | 0 | 2 |
+| Operação encerrada | **43** | **6** | **1** | **50** |
+
+Foram **49 tentativas reais**. Não há aprovação pendente, resultado incerto,
+mensagem duplicada ou job em execução dentro do escopo auditado. O perfil 16 não
+estava disponível e não recebeu tentativa. A identificação incorreta de R9 foi
+cancelada antes de envio; a R9 correta integra o lote. **Não reexecutar o lote.**
+
+### Retornos e próxima ação
+
+- Recebidos **5 retornos reais** dos leads **48, 58, 68, 74 e 80**. Os jobs
+  `process_inbound` correspondentes são **173, 183, 194, 201 e 208**.
+- Os jobs de teste **156 e 157** permanecem separados, ambos do lead 1.
+  Os sete jobs estão `pending`, **attempts=0**. Nenhuma resposta automática saiu.
+- Revisar os retornos, distinguir os testes e preparar os textos para aprovação.
+  Não iniciar o worker geral para processar essa fila como efeito da retomada.
+  Aprovar uma resposta não libera pausas; a janela da API e o opt-out devem ser
+  verificados novamente no momento de um envio autorizado.
+- Pausas geral e do navegador em **1/1**; `DRY_RUN=true` persistente, descoberta
+  desativada e worker geral ausente. O recebimento continua pelo túnel manual,
+  que exige computador ligado/online e sua janela aberta, mesmo minimizada.
+
+### Evidência e correções concluídas
+
+- Antes de cada tentativa, o Direct foi conferido sob `@agenciablessialabs`.
+  Os vínculos/fontes dos IDs **24, 45, 49, 50 e 51** foram confirmados; não restam
+  as pendências de fonte do checkpoint parcial.
+- Casos **13/36**: a interface primeiro aparentou envio e depois mostrou recusa.
+  Reconciliados para `blocked`/`rejected`, com jobs terminais e sem reenvio. ACKs,
+  capturas originais, corpos e timestamps anteriores foram preservados em
+  metadados/auditoria. Relatórios `late-platform-block-13-applied-2026-10-22.json`
+  e `late-platform-block-36-applied-2026-10-22.json`, em `logs/operator-assisted/`.
+- Caso **42**: recusado em português, sem ACK, após expiração natural. Resolvido
+  por prova em `approval-42-platform-block-applied-2026-10-22.json`. Caso **49**:
+  recusado e encerrado diretamente pelo ACK negativo. As recusas mantêm
+  `do_not_contact=false`, pois não são pedidos de remoção do destinatário.
+- A confirmação do envio da **Hertz (14)** preserva o inbound/API que chegou
+  antes do ACK. A reconciliação conservou esse atendimento e o job de resposta
+  pendente. O mesmo cuidado foi aplicado ao ramo de recusa: não sobrescrever
+  inbound ou atendimento humano mais recente ao encerrar a tentativa.
+- Antes de gravar um ACK, **reabrir/recarregar o mesmo thread**, conferir a conta,
+  o destinatário, o texto persistido e eventual erro. Uma bolha ou “Message actions”
+  isolada não basta. Usar captura com **nonce no nome** e conferir SHA-256; não
+  reutilizar caminho de prova. O ACK negativo aceita as literais verificadas em
+  **PT e EN**, mantendo o idioma observado, sem tradução fabricada.
+- Verificações mais recentes: **26 testes da ponte**, TypeScript e ESLint focal
+  passaram. Antes das últimas correções, a bateria focal de ponte/aprovações/
+  proteção de primeiro contato passou em **56 testes**. Essas execuções são
+  evidências separadas. Procedimento em [docs/ENVIO-ASSISTIDO.md](docs/ENVIO-ASSISTIDO.md).
+
+### Histórico do checkpoint parcial — 22/10/2026, 11h15min57s BRT
+
+O lote ainda estava em execução nesse horário. Este registro foi preservado como
+histórico; a conclusão e os contadores vigentes estão no checkpoint final acima.
+
+### Autorização e escopo
+
+- O usuário dispensou a revisão individual dos **48 textos já existentes**,
+  aprovações **4–51**, com “nem vou revisar, manda bala”. O manifesto
+  `logs/manifest-lote48-autorizado-2026-10-22.json` conserva destinatários, versões,
+  corpos exatos e SHA-256. Ele é uma fotografia, não uma fila para executar sem
+  reconferir o estado atual.
+- A autorização permite esses textos e destinatários. Não libera descoberta,
+  respostas automáticas, worker geral, alterações de copy ou contatos adicionais.
+- O histórico do Direct é conferido individualmente por CUA antes de aprovar cada
+  item no banco. Nenhum contato já abordado, bloqueado ou com resultado incerto
+  deve receber uma nova primeira abordagem. Mudança de @ preserva o cuidado com
+  identidade e scoped ID; pontuação e sublinhado não são descartados na comparação.
+
+### Execução assistida em vigor
+
+- O lançador `scripts/operator-assisted-send.ts` executa **um único job aprovado**.
+  Exige pausas geral e do navegador ativas e ausência de worker geral. Ele usa
+  `DRY_RUN=false` apenas no processo, sem alterar `.env`, e restaura as pausas antes
+  da espera por CUA. Conferência de banco deste checkpoint: pausas em `1/1`.
+- Antes da ação, conferir conta Blessia, destinatário, Direct sem abordagem
+  anterior, corpo, versão, hash e prazo do pedido. Registrar captura do resultado
+  e ACK correspondente. Procedimento completo em
+  [docs/ENVIO-ASSISTIDO.md](docs/ENVIO-ASSISTIDO.md).
+- Uma bolha de mensagem acompanhada de erro **não** comprova envio. Não reutilizar
+  ACK, reabrir jobs, tratar `uncertain` como sucesso ou repetir por outro canal.
+- **Worker geral, respostas automáticas e descoberta permanecem pausados.**
+  Webhook e gateway continuam responsáveis pelo recebimento; a confirmação real
+  anterior foi às 10h17min56s BRT, com HMAC válido e gravação no CRM. Receber uma
+  resposta não dispara automaticamente outra mensagem.
+
+### Casos concluídos e restrições de continuidade
+
+- **R9 incorreta:** `@r9barbeariaoficial` sem sublinhado era outra identidade.
+  Aprovação 1 rejeitada, job 160 cancelado sem tentativa, lead 35 em revisão humana.
+  O registro foi preservado; não reutilizar sua aprovação.
+- **R9 correta:** `@r9barbeariaoficial_`, lead 38, foi conferida no perfil e Direct.
+  Aprovação 4 está `sent` v4, job 162 `completed`, mensagem 44 `sent` e canal
+  `waiting_inbound_reply`. Provas/ACK em `logs/operator-assisted/approval-4-*`.
+  Esse item do lote já terminou; não reenviar.
+- **DQ Fisioterapia:** aprovação 2 rejeitada, job 161 `dead_letter`, canal `blocked`.
+  **Le Palmier:** aprovação 3 rejeitada, job 158 `dead_letter`, canal `blocked`.
+  A interface recusou novas solicitações; não houve confirmação de entrega nem
+  retry. Ambos mantêm `do_not_contact=false`, pois não houve pedido de remoção.
+  Evidências e encerramento em `logs/operator-assisted/dq-platform-block-applied-2026-10-22.json`
+  e `logs/operator-assisted/lepalmier-platform-block-applied-2026-10-22.json`.
+- A auditoria de 11h12 encontrou 48 @ distintos, sem duplicidade entre o lote.
+  IDs 5–51 não tinham mensagens/tentativas locais anteriores naquele instante.
+  A API oficial percorreu 34 conversas e encontrou apenas a R9 recém-enviada.
+  Nenhum dos 48 tinha scoped ID cadastrado; essa limitação e a possível ausência
+  de mensagens antigas na API mantêm necessária a conferência do Direct.
+- **Fontes então pendentes, posteriormente conferidas antes das tentativas:** ID24 `@escolapadrejuliomaria` (identificador
+  somente em texto no site); ID45 `@gogirl.comm` (cidade confirmada pelo índice);
+  IDs49 `@flordelisspa_sjc`, 50 `@_clinicaluminus` e 51 `@cssaude` (limitação de
+  abertura/leitura da fonte). A verificação foi concluída durante o lote.
+- Os demais envios prosseguiram e foram encerrados no checkpoint final. Não
+  reconstruir a fila nem importar os lotes novamente como contatos novos.
+
+### Histórico: recuperação anterior à autorização dos envios em 22/10
+
+As contagens, três rascunhos e ausência de outbound abaixo pertencem ao checkpoint
+anterior. Foram preservados para auditoria; o checkpoint final acima prevalece.
 
 - Marca e configuração comercial atualizadas para Blessia Labs, com site `https://blessialabs.com.br`, Instagram `@agenciablessialabs` e Marcos em Desenvolvimento e Comercial pelo WhatsApp (12) 99678-7273. Yasmin cuida do suporte.
 - Prospecção pausada por decisão explícita do operador: pausa geral e fila do navegador ativas no banco, `DRY_RUN=true` e descoberta autônoma desativada. **Sem worker ativo e sem envio de mensagens nesta retomada.** Aprovar um texto não altera nenhuma dessas condições.
@@ -34,7 +160,7 @@ Este sistema roda localmente. O banco, a sessão do Chrome e as credenciais perm
 2. Ler e editar a mensagem. **Salvar** qualquer alteração antes de aprovar; a versão salva é a que poderá ser enviada.
 3. Para uma primeira abordagem, abrir o Direct e conferir que nunca enviamos mensagem àquela conta. Só então marcar a confirmação de histórico.
 4. **Aprovar cada mensagem** individualmente, ou rejeitar. Troca de destinatário, versão desatualizada, contato anterior ou tentativa incerta impedem a aprovação/envio.
-5. A aprovação enfileira somente o texto exato salvo. **Não libera a pausa geral, a fila do navegador, o modo real ou a descoberta.** O recebimento real já foi validado; a retomada dos envios ainda exige decisão separada do usuário.
+5. A aprovação enfileira somente o texto exato salvo. **Não libera a pausa geral, a fila do navegador, o modo real ou a descoberta.** O lote 4–51 autorizado no chat já foi concluído; não o executar novamente. Novos textos/contatos e respostas permanecem sujeitos à aprovação correspondente e ao procedimento de envio autorizado.
 
 Primeiras abordagens, respostas pela API e acompanhamentos passam pela revisão humana.
 Jobs antigos sem aprovação não podem enviar. Antes da ação externa, a aprovação é
@@ -129,7 +255,12 @@ Se a chave vazar, revogue imediatamente em <https://platform.openai.com/api-keys
 
 ## 4. Chrome dedicado e Instagram
 
-Nesta instalação, o modo escolhido é **navegador assistido pelo operador**: o Codex usa a sessão do Instagram já aberta no navegador do usuário para o primeiro contato. A fila de navegador permanece pausada com o motivo `operator_assisted_browser`, mas jobs da API continuam sendo processados. Não é necessário abrir outro perfil.
+Nesta retomada, o modo escolhido é **navegador assistido pelo operador**: o Codex usa
+CUA para operar a sessão Blessia já aberta e um lançador reserva somente o job
+autorizado. A pausa geral e a fila do navegador permanecem ativas entre as etapas;
+jobs de respostas pela API não são processados automaticamente. Não iniciar o
+worker geral para executar o lote. O procedimento é
+[docs/ENVIO-ASSISTIDO.md](docs/ENVIO-ASSISTIDO.md).
 
 O modo dedicado abaixo continua disponível como alternativa para uma instalação totalmente local e autônoma.
 
