@@ -26,24 +26,30 @@ Respostas e acompanhamentos também exigem aprovação; simulação e envio ince
 não são repetidos automaticamente. Os 32 contatos com envio registrado e as duas
 tentativas antigas incertas estão bloqueados para novas primeiras abordagens.
 
-O usuário abriu manualmente o túnel temporário
-`https://stated-bird-ago-future.trycloudflare.com`. Os callbacks do app principal e
-do produto Instagram foram atualizados. Passaram 12 verificações locais e 8 públicas.
-Um teste sintético da Meta recebeu HTTP 200 com assinatura válida, mas
-`received=0`: isso não comprova ingestão de mensagens nem handoff. A mensagem real
-enviada pelo usuário às 09h48 BRT, de `@marcos_mieli` para `@agenciablessialabs`, foi
-vista na interface e lida pela API oficial, mas ainda não apareceu no CRM.
-Às 10h02, a assinatura existente `messages` da mesma conta foi reaplicada uma vez,
-com HTTP 200 e `success=true`; GET antes/depois preservou o mesmo vínculo e campo.
-O segundo teste, `Teste conexão Blessia 2`, também chegou ao Instagram às 10h03m33s,
-confirmado pela API, mas não ao CRM. Às 10h05, o callback retornou HTTP 530 e depois
-`ENOTFOUND`; não havia processo `cloudflared.exe` ativo. O túnel está encerrado.
-O horário exato da queda não foi observado. Painel e receptor local continuam ativos;
-o recebimento externo não está validado de ponta a ponta.
+O recebimento real foi confirmado em **22/10/2026 às 10h17min56s BRT**. O usuário
+abriu manualmente um novo túnel,
+`https://watt-yards-fever-recognize.trycloudflare.com`, e os callbacks do app principal
+e do produto Instagram foram salvos e conferidos novamente. As 8 verificações
+públicas passaram. A mensagem “Teste 2” chegou por nova tentativa às 10h16min49s; a
+“Teste 3” chegou às 10h17min56s, em menos de um segundo, com HMAC válido e sem erro de
+processamento. O contato de teste ficou em `api_active`, sob a API, no estado `replied`.
 
-A revisão automática bloqueou a iniciação do túnel pelo agente. Esse bloqueio não
-deve ser contornado. A URL atual depende da janela de túnel aberta pelo usuário;
-quando ela mudar, os dois callbacks precisam ser atualizados e revalidados.
+Os dois jobs de processamento continuam pendentes, com zero tentativas. **Nenhum
+novo envio foi feito ou validado**, os três rascunhos seguem pendentes, as pausas
+continuam ativas e o worker permanece desligado. O banco contém 37 leads, 40 mensagens,
+117 jobs, 4 eventos de webhook e 3 exceções.
+
+A URL anterior `stated-bird-ago-future.trycloudflare.com` foi substituída. O bloqueio
+da revisão automática à iniciação do túnel pelo agente continua válido e não deve
+ser contornado. Para manter o recebimento, deixar o computador ligado e conectado à
+internet e a janela de túnel aberta; pode minimizá-la. Ao fechar ou reiniciar o túnel,
+a URL pode mudar, exigindo atualizar os dois callbacks e revalidar. Nenhuma instalação
+ou inicialização automática foi configurada.
+
+Evidência principal: `logs/recepcao-real-confirmada-2026-10-22.json` e
+`screenshots/recebimento-confirmado-blessia-2026-10-22.png`. Os testes sintéticos
+anteriores com `received=0` permanecem históricos; a confirmação atual usa mensagens
+reais recebidas e gravadas no CRM.
 
 A migração aditiva de aprovações foi aplicada após backup do banco. A versão passou
 em **57 testes offline**, TypeScript e ESLint focal. Procedimento, backup e limites
