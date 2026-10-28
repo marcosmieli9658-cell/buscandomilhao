@@ -30,7 +30,16 @@ export async function POST(request: NextRequest) {
     });
     return NextResponse.json({ error: "Assinatura inválida." }, { status: 401 });
   }
-  const result = await processInstagramWebhook(rawBody);
+  let result: Awaited<ReturnType<typeof processInstagramWebhook>>;
+  try {
+    result = await processInstagramWebhook(rawBody);
+  } catch {
+    return NextResponse.json({ ok: false, error: "Evento não processado." }, { status: 503 });
+  }
+  if (result.failed) {
+    console.warn("[instagram-webhook] Processamento incompleto.", result);
+    return NextResponse.json({ ok: false, ...result }, { status: 503 });
+  }
   console.info("[instagram-webhook] Evento aceito.", result);
   return NextResponse.json({ ok: true, ...result });
 }

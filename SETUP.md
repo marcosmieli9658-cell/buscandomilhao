@@ -2,6 +2,61 @@
 
 Este sistema roda localmente. O banco, a sessão do Chrome e as credenciais permanecem na máquina do operador.
 
+## Retomada em andamento — 28/10/2026
+
+O usuário autorizou até 50 novos contatos e aprovou os textos das aprovações
+**52–101**. O manifesto exato, com destinatários, versões e hashes, está em
+`logs/operator-assisted/manifest-authorized-2026-10-28.json`. Todos os 50 rascunhos
+foram importados como pendentes, sem jobs de envio. A aprovação de cada job só será
+registrada após conferir o histórico atual do Direct. Não repetir contatos antigos,
+recusas ou tentativas de resultado incerto. A autorização não libera respostas
+automáticas, descoberta ou worker geral.
+
+**Conexão em preparação, ainda não ativada na VPS.** A Meta invalidou a autorização
+Instagram (OAuth 190); a renovação pelo aplicativo ainda depende da conclusão do
+login específico do Instagram. Os callbacks continuam no antigo túnel indisponível.
+O usuário escolheu substituir essa dependência por recebimento permanente na VPS.
+
+### Recebimento permanente preparado
+
+- [Receptor e implantação](deploy/receiver/README.md): fila SQLite na VPS, assinatura
+  Meta, sincronização autenticada e confirmação somente após gravação no CRM.
+- Endereço planejado: `https://blessialabs.com.br/api/buscando-milhao/webhook`.
+- `scripts/sync-inbound.mjs`: recebe eventos, preserva datas originais e repete
+  falhas sem bloquear os eventos seguintes. Anexos entram para revisão humana;
+  arquivos não são baixados e nenhuma resposta é enviada automaticamente.
+- Configuração local em `.env.receiver-sync.local`, ignorada pelo Git; não
+  compartilhar seu conteúdo. Nenhuma credencial de envio acompanha o receptor.
+- `ABRIR-PAINEL-BLESSIA.cmd` abre painel e sincronizador em segundo plano, após
+  validar os processos e a identidade do painel. **Usar depois da ativação e do
+  teste de recebimento.** Não há inicialização automática no login do Windows.
+- Para inspecionar o atalho sem iniciar nada:
+  `powershell.exe -NoProfile -File scripts/start-receiving.ps1 -DryRun`.
+- **Não usar `pnpm dev` ou `pnpm start` nesta retomada:** os scripts legados também
+  iniciam worker e túnel. O atalho novo chama somente Next e o sincronizador.
+
+Validação local: 38 testes Node (receptor, configuração Nginx e sincronização),
+62 testes Vitest focais, ESLint focal e typecheck do código passaram. O typecheck
+global ainda encontra três erros anteriores no auditor operacional ignorado
+`logs/operator-assisted/audit-batch-2026-10-22.ts`. O `-DryRun` do atalho reconheceu
+o painel existente e a configuração sem iniciar sincronização ou alterar pausas.
+Esses testes não comprovam disponibilidade em produção nem recebimento real.
+
+O verificador `node scripts/verify-receiver.mjs --check` foi preparado para a VPS.
+Após instalar, `--probe` grava um único evento técnico vazio, sem mensagem ou ACK;
+`--check --probe-id UUID` confere a persistência do mesmo evento depois de reiniciar
+o receptor. Não executar o sincronizador antes dessa verificação de reinício.
+
+Checkpoint local às 10h20 BRT: 50 rascunhos pendentes, zero mensagens ou jobs de
+envio novos, 135 leads, 95 mensagens, 173 jobs e nove eventos de webhook. Pausas 1/1,
+nenhum job em execução e `DRY_RUN=true`. Backup consistente:
+`backups/upscale-agent-2026-10-28T13-18-44-663Z.db`; banco e backup passaram em
+`PRAGMA quick_check`. Relatório: `logs/checkpoint-receiver-2026-10-28.json`.
+
+Antes de liberar esta rodada: concluir acesso à VPS, implantar e testar o receptor,
+renovar a conexão Meta, atualizar os callbacks, confirmar uma entrada real no CRM
+e conferir cada Direct. As pausas geral/navegador e `DRY_RUN=true` são preservados.
+
 ## Checkpoint operacional final — 22/10/2026, 12h38min07s BRT
 
 Auditoria final **aprovada**, com prova em

@@ -1,0 +1,6 @@
+.test-state-*/
+.env
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*

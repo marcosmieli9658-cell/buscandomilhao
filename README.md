@@ -2,6 +2,12 @@
 
 Sistema comercial local da Blessia Labs para descobrir, qualificar e acompanhar leads no Instagram com CRM auditável, worker durável e handoff seguro entre o navegador e a API oficial da Meta.
 
+**Retomada de 28/10/2026:** há 50 novos textos autorizados, IDs 52–101, aguardando
+conexão e conferência individual do Direct. O recebimento permanente na VPS está
+preparado e testado localmente, mas ainda não foi ativado. Estado e comandos seguros
+em [SETUP.md](SETUP.md). Os scripts legados `pnpm dev/start` também iniciam worker e
+túnel; não usá-los para abrir somente o painel nesta retomada.
+
 O projeto implementa o ciclo:
 
 ```text

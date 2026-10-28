@@ -1,0 +1,46 @@
+[Unit]
+Description=Blessia Instagram durable inbound receiver
+After=network.target
+
+[Service]
+Type=simple
+User=blessia-receiver
+Group=blessia-receiver
+WorkingDirectory=/opt/buscandomilhao-receiver/current
+Environment=NODE_ENV=production
+Environment=RECEIVER_DB_PATH=/var/lib/blessia-instagram-receiver/events.sqlite
+EnvironmentFile=/etc/blessia-instagram-receiver.env
+ExecStartPre=/usr/bin/node -e 'if (Number(process.versions.node.split(".")[0]) !== 24) process.exit(1)'
+ExecStart=/usr/bin/node /opt/buscandomilhao-receiver/current/receiver.mjs
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=45
+StateDirectory=blessia-instagram-receiver
+StateDirectoryMode=0700
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+LockPersonality=yes
+RestrictSUIDSGID=yes
+RestrictNamespaces=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+SystemCallArchitectures=native
+CapabilityBoundingSet=
+AmbientCapabilities=
+IPAddressDeny=any
+IPAddressAllow=localhost
+MemoryMax=256M
+TasksMax=32
+LimitNOFILE=1024
+
+[Install]
+WantedBy=multi-user.target
