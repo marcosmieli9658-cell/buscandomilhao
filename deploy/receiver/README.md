@@ -1,10 +1,43 @@
 # Receptor permanente de entrada do Buscando Milhão
 
-**Preparado localmente, sem implantação ou alteração da Meta nesta entrega.**
+**Implantado na VPS em 28/10/2026, com os dois callbacks Meta atualizados.**
 Este serviço recebe e guarda notificações assinadas na VPS mesmo quando o computador
 do CRM está desligado. Não contém worker de vendas, gerador de mensagens, token de
 acesso da Página ou função de envio ao Instagram. Requer Node **24** e usa apenas
 módulos nativos, incluindo `node:sqlite`.
+
+## Estado verificado em 28/10/2026
+
+- Release ativa: `20261028T134141Z-2388989`, em
+  `/opt/buscandomilhao-receiver/releases/`. O serviço
+  `blessia-instagram-receiver.service` foi confirmado ativo e habilitado no boot,
+  escutando apenas em `127.0.0.1:8790`. Nginx e health local passaram.
+- Callback permanente, principal e do produto Instagram:
+  `https://blessialabs.com.br/api/buscando-milhao/webhook`. O principal foi
+  reconfirmado pela API; o callback do produto foi atualizado na interface Meta.
+- A inicialização pelo symlink `current/` foi corrigida: o guard da CLI compara os
+  caminhos resolvidos por `realpath`, enquanto importar o módulo permanece sem
+  iniciar o serviço. Os **18 testes Node passaram em Windows e Linux**, incluindo
+  a regressão dessa inicialização. O runtime continua sendo **Node 24**.
+- O verificador público confirmou challenge válido, rejeição de token e assinatura
+  inválidos, health não exposto e autenticação da sincronização. O evento técnico
+  vazio **ID 1** foi persistido, reencontrado com os mesmos bytes após reiniciar o
+  receptor e posteriormente confirmado pelo sincronizador após sucesso do webhook
+  local. Como continha `entry: []`, não criou mensagem nem contato no CRM.
+- O inicializador local `scripts/start-receiving.ps1` funcionou às **10:43 BRT**;
+  o sincronizador ficou ativo sem worker comercial. O arquivo
+  `ABRIR-PAINEL-BLESSIA.cmd` abre painel e recebimento em segundo plano.
+  **Não foi configurada inicialização automática no Windows nem atalho no Desktop.**
+- **Ainda falta concluir a renovação do acesso do Instagram e testar uma mensagem
+  real até o CRM.** O evento técnico vazio não comprova esse recebimento real.
+  A ativação do receptor não liberou envios nem respostas automáticas.
+
+Evidências locais, ignoradas pelo Git: `logs/receiver-vps-v2-apply-2026-10-28.txt`,
+`logs/receiver-vps-v2-postcheck-2026-10-28.txt`,
+`logs/receiver-vps-v2-tests-plan-2026-10-28.txt`,
+`logs/permanent-callback-main-2026-10-28.json` e
+`logs/receiver-verification-2026-10-28T13-42-*.jsonl`.
+O procedimento diário está em [RECEBIMENTO-PERMANENTE.md](../../docs/RECEBIMENTO-PERMANENTE.md).
 
 ## Fluxo e durabilidade
 
@@ -96,9 +129,10 @@ credenciais, eventos, contagens ou caminhos. O exemplo Nginx bloqueia sua exposi
 
 ## Arquivos e preparação da VPS
 
-O operador deve conferir a distribuição, a localização do Node 24 e as regras do
-Nginx antes de executar a instalação. Nenhum destes arquivos foi executado na VPS
-durante sua preparação; o script exige `--apply` para instalar.
+Em novas instalações ou atualizações, conferir a distribuição, a localização do
+Node 24 e as regras do Nginx antes de executar o instalador. A implantação de
+28/10/2026 já executou os testes e verificações na VPS; o script continua exigindo
+`--apply` para instalar e não modifica callbacks Meta por conta própria.
 
 - `receiver.mjs`: serviço e factory `createReceiver(config)` para testes.
 - `blessia-instagram-receiver.service`: unidade com usuário dedicado, isolamento,
@@ -114,7 +148,7 @@ durante sua preparação; o script exige `--apply` para instalar.
   original. Aborta em configuração ambígua ou diferente da estrutura esperada.
 - `deploy-receiver.sh`: plano por padrão, instalação explícita e rollback.
 
-Layout proposto:
+Layout implantado:
 
 ```text
 /opt/buscandomilhao-receiver/releases/<id>/receiver.mjs   root:root 0644
@@ -190,9 +224,10 @@ ou symlink. Restaura o estado anterior do serviço e valida Nginx antes de recar
 Não apaga fila SQLite, segredos, backups ou releases. Se for interrompido ou houver
 mudanças concorrentes, exige revisão manual; não se deve forçar a sobrescrita.
 
-O instalador precisa ser validado no Linux da VPS; a verificação local de sintaxe
-Bash e os testes Node não substituem `systemd-analyze verify`, `nginx -t`, health,
-TLS, teste HMAC e recebimento real após instalação autorizada.
+Cada nova implantação precisa ser validada no Linux da VPS; a verificação local de
+sintaxe Bash e os testes Node não substituem `systemd-analyze verify`, `nginx -t`,
+health, TLS, teste HMAC e recebimento real. Na implantação de 28/10, as verificações
+técnicas passaram; o recebimento real continua pendente conforme o estado acima.
 
 ## Validação antes do corte
 
@@ -208,10 +243,51 @@ parser é testado para preservação de TLS/site/Resend, idempotência e rejeiç
 ambiguidades. Usam bancos temporários apenas neste diretório; nenhum teste toca o
 CRM operacional.
 
-Após preparação autorizada na VPS, conferir `systemd-analyze verify`, `nginx -t`,
+Em uma nova instalação autorizada na VPS, conferir `systemd-analyze verify`, `nginx -t`,
 health local, TLS e rotas; usar payload sintético assinado e verificar a persistência
 e a sincronização local antes de alterar callbacks. Não liberar vendas ou respostas
 automáticas como efeito de ativar recepção. Conferir recebimento real separadamente.
+
+## Verificador e inicialização local
+
+O utilitário `scripts/verify-receiver.mjs` usa apenas as credenciais de recepção
+permitidas e grava relatórios sanitizados e datados em `logs/`. Não chama rotas de
+envio, não inicia worker e **nunca envia ACK**.
+
+```text
+node scripts/verify-receiver.mjs --check
+```
+
+Esse é também o modo padrão: faz as checagens de leitura e um POST inválido `{}`
+para comprovar a rejeição de assinatura. Não grava um evento válido. Para testar
+durabilidade em uma manutenção controlada, manter a sincronização local parada:
+
+```text
+node scripts/verify-receiver.mjs --probe
+```
+
+`--probe` acrescenta exatamente um JSON assinado com `object: "instagram"`,
+`entry: []` e um `verification_id` técnico com UUID; sem mensagem, remetente ou
+destinatário. Confere bytes, hash e assinatura na fila, deixando o evento pendente.
+Depois de reiniciar o receptor, conferir o UUID informado pelo comando anterior:
+
+```text
+node scripts/verify-receiver.mjs --check --probe-id UUID_INFORMADO
+```
+
+Essa última consulta não grava outro evento. Só depois de comprovar a persistência,
+iniciar o recebimento local: o sincronizador repassa o evento vazio ao CRM e confirma
+o ID após o resultado bem-sucedido. Se a sincronização já o confirmou, a consulta por
+UUID informa que ele não está pendente; não interpretar isso isoladamente como perda.
+
+Para uso diário, executar `ABRIR-PAINEL-BLESSIA.cmd` na raiz da ferramenta. Ele chama
+`scripts/start-receiving.ps1`, que valida configuração, identidade dos processos e
+saúde do painel antes de iniciar ou reaproveitar o sincronizador. O painel escuta
+em `http://127.0.0.1:3000`; ambos rodam em segundo plano, com registros em
+`logs/receiving/`. O inicializador não executa scripts gerais do pacote, túneis ou
+worker, nem altera pausas. Sua opção `-DryRun` só inspeciona o estado local, sem
+iniciar processos. O Windows não os inicia automaticamente ao entrar na conta;
+abrir o arquivo novamente após reiniciar o computador.
 
 ## Operação, backup e limites
 
@@ -224,5 +300,5 @@ backup consistente via SQLite (online backup ou `VACUUM INTO` em manutenção) e
 copiar somente o arquivo principal enquanto WAL estiver ativo. Backups contêm
 mensagens privadas e devem manter proteção equivalente. Uma falha da VPS ou disco
 cheio ainda interrompe recepção; 503 permite retry, mas não garante que a Meta
-repita indefinidamente. Nenhum resultado de disponibilidade da VPS foi verificado
-por estes testes locais.
+repita indefinidamente. As verificações da implantação registram o estado naquele
+momento; não constituem monitoramento contínuo ou garantia de disponibilidade.

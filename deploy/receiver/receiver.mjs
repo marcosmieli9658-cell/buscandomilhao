@@ -3,7 +3,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 
 const MAX_BODY_BYTES = 2 * 1024 * 1024;
 const MAX_BATCH_BYTES = 8 * 1024 * 1024;
@@ -252,7 +252,17 @@ export function configFromEnv(env = process.env) {
   };
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
+function isEntrypoint() {
+  if (!process.argv[1]) return false;
+  try {
+    // ESM resolves imports to the release path, while argv may still contain current/.
+    return fs.realpathSync(fileURLToPath(import.meta.url)) === fs.realpathSync(path.resolve(process.argv[1]));
+  } catch {
+    return false;
+  }
+}
+
+if (isEntrypoint()) {
   process.umask(0o077);
   let receiver;
   try {

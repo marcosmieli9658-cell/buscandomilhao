@@ -3,8 +3,9 @@
 Sistema comercial local da Blessia Labs para descobrir, qualificar e acompanhar leads no Instagram com CRM auditável, worker durável e handoff seguro entre o navegador e a API oficial da Meta.
 
 **Retomada de 28/10/2026:** há 50 novos textos autorizados, IDs 52–101, aguardando
-conexão e conferência individual do Direct. O recebimento permanente na VPS está
-preparado e testado localmente, mas ainda não foi ativado. Estado e comandos seguros
+conexão e conferência individual do Direct. O receptor permanente na VPS e os dois
+callbacks estão ativos; falta renovar o acesso Instagram e confirmar mensagem real.
+Estado e comandos seguros
 em [SETUP.md](SETUP.md). Os scripts legados `pnpm dev/start` também iniciam worker e
 túnel; não usá-los para abrir somente o painel nesta retomada.
 
@@ -145,7 +146,7 @@ estão em `SETUP.md`; os registros de setembro são históricos.
 - Revisão individual em `/approvals`, com edição, aprovação e rejeição do texto exato
 - Primeira DM pelo Chrome dedicado, com modo real ou simulação visíveis no painel
 - Webhook Meta com verificação HMAC e idempotência
-- Gateway público restrito ao webhook; túnel temporário aberto manualmente pelo operador nesta retomada
+- Receptor permanente na VPS com fila durável e sincronização autenticada com o CRM local
 - Handoff atômico de propriedade navegador → API oficial
 - Motor de conversação estruturado com OpenAI
 - Afirmações comerciais limitadas ao arquivo de fatos verificados
@@ -160,24 +161,26 @@ estão em `SETUP.md`; os registros de setembro são históricos.
 
 ## Executar
 
-Para abrir somente o painel local nesta retomada, com as dependências já instaladas:
+Com as dependências já instaladas, abra painel e sincronização de recebimento:
 
 ```powershell
-node node_modules/next/dist/bin/next dev --hostname 127.0.0.1 --port 3000
+.\ABRIR-PAINEL-BLESSIA.cmd
 ```
 
-Abra <http://127.0.0.1:3000>. Esse comando não inicia worker, gateway nem túnel.
-Esse comando não executa o lote autorizado nem inicia a descoberta. Os envios
-assistidos seguem o procedimento de um único job; não iniciar o worker geral.
+O navegador abre <http://127.0.0.1:3000>. Painel e sincronização continuam
+em segundo plano, sem worker, gateway ou túnel. Os envios assistidos seguem o
+procedimento de um único job; esse arquivo não executa o lote nem inicia descoberta.
+Consulte [o procedimento diário](docs/RECEBIMENTO-PERMANENTE.md).
 
-Para uma instalação nova ou uma operação completa autorizada:
+Em uma instalação nova, instale as dependências e siga o [SETUP.md](SETUP.md):
 
 ```bash
 pnpm install
-pnpm dev
 ```
 
-O comando inicia painel, worker, gateway restrito e túnel HTTPS. A URL temporária do webhook é registrada automaticamente no app principal da Meta. No fluxo com Login da empresa no Instagram, confirme também que o callback específico do produto usa a mesma URL. Abra <http://localhost:3000>.
+**Fluxo legado:** `pnpm dev` e `pnpm start` iniciam worker e túnel e podem regravar o
+callback Meta com uma URL temporária. Não usar esses lançadores na instalação atual
+com receptor permanente na VPS.
 
 Antes do primeiro uso real, siga o [SETUP.md](SETUP.md). O sistema começa em `DRY_RUN=true`.
 

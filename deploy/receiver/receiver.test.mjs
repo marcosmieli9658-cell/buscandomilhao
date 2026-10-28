@@ -4,7 +4,8 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import http from "node:http";
-import { fileURLToPath } from "node:url";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 import { createReceiver } from "./receiver.mjs";
 
@@ -225,4 +226,32 @@ test("persistent path and an independent strong sync credential are mandatory", 
   assert.throws(() => createReceiver({ ...base, appSecrets: [syncToken] }), /independent/);
   assert.throws(() => createReceiver({ ...base, appSecrets: [] }), /app_secret/);
   assert.equal(fs.existsSync(path.dirname(dbPath)), false);
+});
+
+test("CLI invoked through current symlink starts validation, while imports stay inert", t => {
+  const stateDir = fs.mkdtempSync(path.join(directory, ".test-state-"));
+  const release = path.join(stateDir, "release");
+  const current = path.join(stateDir, "current");
+  t.after(() => {
+    if (fs.existsSync(current)) fs.unlinkSync(current);
+    const resolved = fs.realpathSync(stateDir);
+    assert.equal(path.dirname(resolved), fs.realpathSync(directory));
+    assert.ok(path.basename(resolved).startsWith(".test-state-"));
+    fs.rmSync(resolved, { recursive: true, force: true });
+  });
+  fs.mkdirSync(release);
+  fs.copyFileSync(path.join(directory, "receiver.mjs"), path.join(release, "receiver.mjs"));
+  fs.symlinkSync(release, current, process.platform === "win32" ? "junction" : "dir");
+  const entrypoint = path.join(current, "receiver.mjs");
+  // Missing configuration must trigger CLI validation without creating a DB or binding a port.
+  const cli = spawnSync(process.execPath, [entrypoint], { env: {}, encoding: "utf8", timeout: 5000 });
+  assert.equal(cli.error, undefined);
+  assert.equal(cli.status, 1);
+  assert.match(cli.stderr, /receiver_start_failed/);
+  const imported = spawnSync(process.execPath, ["--input-type=module", "--eval", `await import(${JSON.stringify(pathToFileURL(entrypoint).href)})`], { env: {}, encoding: "utf8", timeout: 5000 });
+  assert.equal(imported.error, undefined);
+  assert.equal(imported.status, 0);
+  assert.equal(imported.stdout, "");
+  assert.equal(imported.stderr, "");
+  assert.deepEqual(fs.readdirSync(release), ["receiver.mjs"]);
 });

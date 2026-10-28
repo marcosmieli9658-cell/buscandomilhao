@@ -1,6 +1,7 @@
 # Configuração do operador
 
-Este sistema roda localmente. O banco, a sessão do Chrome e as credenciais permanecem na máquina do operador.
+O CRM, a sessão do Chrome e a credencial de envio ficam na máquina do operador.
+O receptor dedicado na VPS usa somente os segredos de verificação e sincronização.
 
 ## Retomada em andamento — 28/10/2026
 
@@ -12,24 +13,24 @@ registrada após conferir o histórico atual do Direct. Não repetir contatos an
 recusas ou tentativas de resultado incerto. A autorização não libera respostas
 automáticas, descoberta ou worker geral.
 
-**Conexão em preparação, ainda não ativada na VPS.** A Meta invalidou a autorização
-Instagram (OAuth 190); a renovação pelo aplicativo ainda depende da conclusão do
-login específico do Instagram. Os callbacks continuam no antigo túnel indisponível.
-O usuário escolheu substituir essa dependência por recebimento permanente na VPS.
+**Receptor permanente ativo na VPS; renovação Instagram e teste real pendentes.**
+A Meta invalidou a autorização Instagram (OAuth 190); o login normal na agência
+está confirmado, mas a autenticação adicional do aplicativo ainda não terminou.
+Os dois callbacks foram alterados e confirmados no endereço fixo da VPS.
 
-### Recebimento permanente preparado
+### Recebimento permanente instalado
 
 - [Receptor e implantação](deploy/receiver/README.md): fila SQLite na VPS, assinatura
   Meta, sincronização autenticada e confirmação somente após gravação no CRM.
-- Endereço planejado: `https://blessialabs.com.br/api/buscando-milhao/webhook`.
+- Endereço ativo: `https://blessialabs.com.br/api/buscando-milhao/webhook`.
 - `scripts/sync-inbound.mjs`: recebe eventos, preserva datas originais e repete
   falhas sem bloquear os eventos seguintes. Anexos entram para revisão humana;
   arquivos não são baixados e nenhuma resposta é enviada automaticamente.
 - Configuração local em `.env.receiver-sync.local`, ignorada pelo Git; não
   compartilhar seu conteúdo. Nenhuma credencial de envio acompanha o receptor.
 - `ABRIR-PAINEL-BLESSIA.cmd` abre painel e sincronizador em segundo plano, após
-  validar os processos e a identidade do painel. **Usar depois da ativação e do
-  teste de recebimento.** Não há inicialização automática no login do Windows.
+  validar os processos e a identidade do painel. A execução real foi validada e
+  ambos estão ativos. Não há inicialização automática no login do Windows.
 - Para inspecionar o atalho sem iniciar nada:
   `powershell.exe -NoProfile -File scripts/start-receiving.ps1 -DryRun`.
 - **Não usar `pnpm dev` ou `pnpm start` nesta retomada:** os scripts legados também
@@ -40,12 +41,24 @@ Validação local: 38 testes Node (receptor, configuração Nginx e sincronizaç
 global ainda encontra três erros anteriores no auditor operacional ignorado
 `logs/operator-assisted/audit-batch-2026-10-22.ts`. O `-DryRun` do atalho reconheceu
 o painel existente e a configuração sem iniciar sincronização ou alterar pausas.
-Esses testes não comprovam disponibilidade em produção nem recebimento real.
+Depois, a regressão de inicialização pelo symlink elevou a bateria do receptor e
+parser para 18 testes, passados no Windows e Linux. O serviço foi implantado na
+release `20261028T134141Z-2388989`, com backup correspondente em
+`/var/backups/blessia-instagram-receiver/`. A primeira tentativa falhou no health e
+foi revertida automaticamente; a causa foi corrigida no guard de entrada ESM.
 
-O verificador `node scripts/verify-receiver.mjs --check` foi preparado para a VPS.
-Após instalar, `--probe` grava um único evento técnico vazio, sem mensagem ou ACK;
-`--check --probe-id UUID` confere a persistência do mesmo evento depois de reiniciar
-o receptor. Não executar o sincronizador antes dessa verificação de reinício.
+Verificação pública passou: token incorreto403, desafio correto200, assinatura
+incorreta401, health oculto404 e sincronização autenticada200/sem autenticação401.
+O evento técnico vazio ID1, probe `66ee763d-4360-400e-b373-8909417a4f08`, sobreviveu
+ao restart e foi sincronizado/confirmado sem criar mensagem no CRM. A fila guarda
+os originais após ACK. Não confundir esse teste técnico com mensagem real.
+Evidências em `logs/receiver-verification-2026-10-28T13-42-*.jsonl`.
+
+O callback principal foi confirmado por API, preservando `messages` v26.0
+(`logs/permanent-callback-main-2026-10-28.json`). O callback do produto Instagram
+foi salvo pela UI e conferido após recarregar
+(`screenshots/meta-callback-vps-confirmado-2026-10-28.png`). Site200, Hub200 e a
+rota de e-mail405 esperada passaram; Resend manteve o processo original na8787.
 
 Checkpoint local às 10h20 BRT: 50 rascunhos pendentes, zero mensagens ou jobs de
 envio novos, 135 leads, 95 mensagens, 173 jobs e nove eventos de webhook. Pausas 1/1,
@@ -53,9 +66,9 @@ nenhum job em execução e `DRY_RUN=true`. Backup consistente:
 `backups/upscale-agent-2026-10-28T13-18-44-663Z.db`; banco e backup passaram em
 `PRAGMA quick_check`. Relatório: `logs/checkpoint-receiver-2026-10-28.json`.
 
-Antes de liberar esta rodada: concluir acesso à VPS, implantar e testar o receptor,
-renovar a conexão Meta, atualizar os callbacks, confirmar uma entrada real no CRM
-e conferir cada Direct. As pausas geral/navegador e `DRY_RUN=true` são preservados.
+Antes de liberar esta rodada: concluir a renovação Meta, confirmar uma entrada
+real no CRM e conferir cada Direct. As pausas geral/navegador e `DRY_RUN=true`
+são preservados. Operação diária: [RECEBIMENTO-PERMANENTE.md](docs/RECEBIMENTO-PERMANENTE.md).
 
 ## Checkpoint operacional final — 22/10/2026, 12h38min07s BRT
 
@@ -365,7 +378,7 @@ A permissão de publicação já usada pela UpScale não implica permissão de m
 - conta profissional do Instagram correta;
 - `instagram_business_manage_messages` com acesso suficiente para a conta própria ou aprovado para contas externas;
 - assinatura do evento `messages` no app e na conta profissional;
-- callback HTTPS público apontando para `/api/instagram/webhook`;
+- ambos os callbacks HTTPS públicos apontando para `https://blessialabs.com.br/api/buscando-milhao/webhook`;
 - ID do app em `INSTAGRAM_APP_ID`;
 - ID específico do produto em `INSTAGRAM_PRODUCT_APP_ID`;
 - token de verificação igual a `INSTAGRAM_WEBHOOK_VERIFY_TOKEN`;
@@ -374,7 +387,15 @@ A permissão de publicação já usada pela UpScale não implica permissão de m
 - token de acesso em `INSTAGRAM_PAGE_ACCESS_TOKEN`;
 - ID da conta profissional em `INSTAGRAM_BUSINESS_ACCOUNT_ID`.
 
-O gateway local expõe somente a rota do webhook. A validação HMAC aceita a chave do produto Instagram e a chave do app principal, pois a Meta usa chaves diferentes conforme a origem do evento. O script do túnel aguarda a URL pública responder, atualiza a assinatura do app principal pela API oficial e mantém o processo ativo. Não exponha o painel local nem a porta de depuração do Chrome.
+O receptor da VPS valida a assinatura e guarda o evento. O sincronizador local
+encaminha os mesmos bytes e assinatura para `http://127.0.0.1:3000/api/instagram/webhook`
+e confirma o evento remoto somente após o CRM processá-lo com sucesso. A validação
+HMAC aceita as chaves do produto Instagram e do aplicativo principal, conforme a
+origem do evento. Painel e depuração do Chrome permanecem restritos ao computador.
+
+**Fluxo legado de túnel:** o gateway local e o script de túnel continuam no código,
+mas não são usados com a VPS. O script pode regravar o callback principal com uma
+URL temporária; não iniciá-lo na instalação atual.
 
 A API oficial só pode responder a uma pessoa que iniciou ou respondeu a conversa. Por isso, o primeiro contato é feito pelo Chrome dedicado. Depois que o webhook recebe a resposta, a propriedade do canal muda de `browser` para `api` de forma auditável.
 
