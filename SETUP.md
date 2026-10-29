@@ -3,20 +3,63 @@
 O CRM, a sessão do Chrome e a credencial de envio ficam na máquina do operador.
 O receptor dedicado na VPS usa somente os segredos de verificação e sincronização.
 
-## Retomada em andamento — 28/10/2026
+## Fechamento do lote — 29/10/2026, 16h19 BRT
 
 O usuário autorizou até 50 novos contatos e aprovou os textos das aprovações
 **52–101**. O manifesto exato, com destinatários, versões e hashes, está em
-`logs/operator-assisted/manifest-authorized-2026-10-28.json`. Todos os 50 rascunhos
-foram importados como pendentes, sem jobs de envio. A aprovação de cada job só será
-registrada após conferir o histórico atual do Direct. Não repetir contatos antigos,
-recusas ou tentativas de resultado incerto. A autorização não libera respostas
-automáticas, descoberta ou worker geral.
+`logs/operator-assisted/manifest-authorized-2026-10-28.json`. O lote terminou com
+**46 envios confirmados e 4 exclusões sem tentativa**, perfis exatos indisponíveis
+**56, 78, 88 e 96**. Zero itens pendentes, aprovados ou em execução no lote;
+46 outbounds, sem duplicidade e sem respostas automáticas. Copy e destinatários
+foram preservados. Os excluídos não tiveram job, envio, substituição de perfil ou
+opt-out permanente. **Não repetir o lote nem retomar pelos itens de checkpoints
+parciais.** Novos contatos e respostas precisam da autorização correspondente.
 
-**Receptor permanente ativo na VPS; renovação Instagram e teste real pendentes.**
-A Meta invalidou a autorização Instagram (OAuth 190); o login normal na agência
-está confirmado, mas a autenticação adicional do aplicativo ainda não terminou.
-Os dois callbacks foram alterados e confirmados no endereço fixo da VPS.
+A auditoria final passou: `logs/operator-assisted/batch-final-audit-2026-10-29.json`.
+O backup online SQLite `backups/upscale-agent-2026-10-29T19-19-39-044Z.db` passou em
+`PRAGMA quick_check`, com ACL exclusiva do usuário atual e SYSTEM. Relatório:
+`logs/backup-final-check-2026-10-29T19-19-41-956Z.json`. Banco e provas são locais,
+ignorados pelo Git. O esclarecimento posterior da nota operacional do item 53,
+sem alterar resultados, está em `logs/backup-final-audit-note-clarification-2026-10-29.json`.
+
+No fechamento, painel **7892** e sincronizador **17776** estavam ativos, home 200,
+nenhum worker geral, processo de envio ou job em execução. Pausas **1/1** e
+`DRY_RUN=true` permanecem preservados. Evidência:
+`logs/runtime-final-check-2026-10-29.json`. A descoberta não foi liberada.
+
+**Receptor permanente ativo e recebimento real confirmado.** A autorização
+Instagram invalidada anteriormente foi renovada em 28/10. A API confirmou
+`@agenciablessialabs`, conta `25957684903928564`, e a assinatura `messages` ativa.
+Os dois callbacks apontam para o endereço fixo da VPS. A credencial fica somente
+na configuração local privada; o arquivo temporário usado na instalação foi removido.
+
+Em 28/10, a mensagem própria **“Teste blessia VPS 28/10”** foi recebida na VPS como
+evento **2**, às **11:57:07 BRT**, e entrou no CRM como mensagem **96** do lead
+`@marcos_mieli`. O webhook **10** foi processado sem erro às **11:57:25 BRT** e o
+evento remoto recebeu confirmação às **11:57:27 BRT**. O timestamp original da
+Meta foi preservado. Nenhuma resposta automática foi enviada. Evidência:
+`logs/recebimento-real-vps-2026-10-28.json`.
+
+Em 29/10, o painel e o sincronizador foram reabertos pelo inicializador de
+recebimento, sem worker geral ou túnel. Às **14:29 BRT**, home 200 com identidade
+Blessia, consulta de verificação sem token 403 esperada e ciclos de sincronização
+sem falhas foram confirmados. Pausas 1/1 e `DRY_RUN=true` permaneceram preservados.
+Evidências: `logs/receiving-start-audit-2026-10-29.json` e
+`logs/vinculo-meta-2026-10-29.json`. Esses registros comprovam a abertura local;
+a conclusão individual dos envios está na auditoria final separada acima.
+
+### Retornos deste lote e próxima ação
+
+Foram recebidos seis eventos de mensagem de cinco contatos: Mercaldo, Seu Dito,
+CD World, Cléo e Ribeiro Pneus. São confirmações ou recepções genéricas, sem
+interesse comercial confirmado. Os jobs de revisão **231, 235, 241, 249 e 254**
+permanecem `pending`, com zero tentativas. O cartão/anexo de Seu Dito exige revisão
+humana, com `channel_owner=human`; nenhum link ou anexo foi aberto pelo agente.
+Na leitura final, não havia outro retorno novo desses contatos. Revisar o conteúdo,
+distinguir eventual interesse real e preparar respostas para aprovação; não
+executar a fila nem liberar respostas automáticas. `sent` confirma persistência no
+Direct e no CRM, sem comprovar leitura. As capturas incompletas originais de
+79/80/82/83 foram preservadas e complementadas sem reenvio; a auditoria registra o caso.
 
 ### Recebimento permanente instalado
 
@@ -60,17 +103,19 @@ foi salvo pela UI e conferido após recarregar
 (`screenshots/meta-callback-vps-confirmado-2026-10-28.png`). Site200, Hub200 e a
 rota de e-mail405 esperada passaram; Resend manteve o processo original na8787.
 
-Checkpoint local às 10h20 BRT: 50 rascunhos pendentes, zero mensagens ou jobs de
+Histórico de 28/10 às 10h20 BRT: 50 rascunhos pendentes, zero mensagens ou jobs de
 envio novos, 135 leads, 95 mensagens, 173 jobs e nove eventos de webhook. Pausas 1/1,
 nenhum job em execução e `DRY_RUN=true`. Backup consistente:
 `backups/upscale-agent-2026-10-28T13-18-44-663Z.db`; banco e backup passaram em
 `PRAGMA quick_check`. Relatório: `logs/checkpoint-receiver-2026-10-28.json`.
 
-Antes de liberar esta rodada: concluir a renovação Meta, confirmar uma entrada
-real no CRM e conferir cada Direct. As pausas geral/navegador e `DRY_RUN=true`
-são preservados. Operação diária: [RECEBIMENTO-PERMANENTE.md](docs/RECEBIMENTO-PERMANENTE.md).
+A renovação Meta, o teste real de entrada e o lote 52–101 foram concluídos.
+As pausas geral/navegador e `DRY_RUN=true` persistente permanecem preservados.
+Próximo trabalho: revisar os retornos, sem repetir os envios ou executar respostas
+automaticamente. Operação diária:
+[RECEBIMENTO-PERMANENTE.md](docs/RECEBIMENTO-PERMANENTE.md).
 
-## Checkpoint operacional final — 22/10/2026, 12h38min07s BRT
+## Histórico — checkpoint operacional final de 22/10/2026, 12h38min07s BRT
 
 Auditoria final **aprovada**, com prova em
 `logs/operator-assisted/batch-audit-2026-10-22T15-38-07-791Z.json`.

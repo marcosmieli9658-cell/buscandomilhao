@@ -2,12 +2,23 @@
 
 Sistema comercial local da Blessia Labs para descobrir, qualificar e acompanhar leads no Instagram com CRM auditável, worker durável e handoff seguro entre o navegador e a API oficial da Meta.
 
-**Retomada de 28/10/2026:** há 50 novos textos autorizados, IDs 52–101, aguardando
-conexão e conferência individual do Direct. O receptor permanente na VPS e os dois
-callbacks estão ativos; falta renovar o acesso Instagram e confirmar mensagem real.
-Estado e comandos seguros
-em [SETUP.md](SETUP.md). Os scripts legados `pnpm dev/start` também iniciam worker e
-túnel; não usá-los para abrir somente o painel nesta retomada.
+**Fechamento de 29/10/2026, às 16h19 BRT:** o lote autorizado de 50 textos,
+IDs **52–101**, terminou com **46 envios confirmados e 4 perfis indisponíveis
+excluídos sem tentativa (56, 78, 88 e 96)**. Zero itens restantes, duplicidades ou
+respostas automáticas. Cada envio tem ACK, prova do Direct e um único outbound.
+Não repetir o lote. A confirmação não comprova leitura ou interesse do destinatário.
+
+Auditoria: `logs/operator-assisted/batch-final-audit-2026-10-29.json`.
+Backup SQLite consistente, com ACL privada e `quick_check=ok`:
+`backups/upscale-agent-2026-10-29T19-19-39-044Z.db`;
+verificação em `logs/backup-final-check-2026-10-29T19-19-41-956Z.json`.
+Pausas **1/1**, `DRY_RUN=true` e worker geral ausente foram preservados.
+Painel e sincronizador seguem ativos; cinco contatos retornaram apenas recepções
+genéricas, sem interesse comercial confirmado. Revisar os retornos e aprovar os
+textos antes de qualquer resposta. O recebimento permanente foi confirmado pela
+VPS até o CRM e dispensa a antiga janela do Cloudflare.
+Estado e comandos seguros em [SETUP.md](SETUP.md). Os scripts legados `pnpm dev/start`
+também iniciam worker e túnel; não usá-los para abrir somente o painel.
 
 O projeto implementa o ciclo:
 
@@ -15,7 +26,7 @@ O projeto implementa o ciclo:
 Observar → Decidir → Agir → Medir → Aprender → Adaptar
 ```
 
-## Checkpoint final | 22/10/2026, 12h38min07s BRT
+## Histórico — checkpoint final | 22/10/2026, 12h38min07s BRT
 
 **Lote concluído e auditoria final aprovada.** No lote autorizado de 48 mensagens
 (aprovações **4–51**), o resultado foi **43 enviadas, 4 recusadas pela plataforma

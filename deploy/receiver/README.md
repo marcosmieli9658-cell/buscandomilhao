@@ -6,7 +6,7 @@ do CRM está desligado. Não contém worker de vendas, gerador de mensagens, tok
 acesso da Página ou função de envio ao Instagram. Requer Node **24** e usa apenas
 módulos nativos, incluindo `node:sqlite`.
 
-## Estado verificado em 28/10/2026
+## Estado verificado em 28 e 29/10/2026
 
 - Release ativa: `20261028T134141Z-2388989`, em
   `/opt/buscandomilhao-receiver/releases/`. O serviço
@@ -28,15 +28,37 @@ módulos nativos, incluindo `node:sqlite`.
   o sincronizador ficou ativo sem worker comercial. O arquivo
   `ABRIR-PAINEL-BLESSIA.cmd` abre painel e recebimento em segundo plano.
   **Não foi configurada inicialização automática no Windows nem atalho no Desktop.**
-- **Ainda falta concluir a renovação do acesso do Instagram e testar uma mensagem
-  real até o CRM.** O evento técnico vazio não comprova esse recebimento real.
-  A ativação do receptor não liberou envios nem respostas automáticas.
+- O acesso Instagram foi renovado em **28/10** e a API confirmou a conta
+  `@agenciablessialabs` e a assinatura `messages`. A mensagem própria
+  **“Teste blessia VPS 28/10”** chegou à VPS como evento **2** às **11:57:07 BRT**,
+  entrou no CRM como mensagem **96** e teve o webhook **10** processado sem erro.
+  O ACK remoto ocorreu às **11:57:27 BRT**, após o processamento local. O timestamp
+  original foi preservado e nenhuma resposta automática foi enviada. Esse teste
+  real, separado do evento técnico vazio, confirmou o fluxo completo.
+- Em **29/10 às 14:29 BRT**, painel e sincronizador foram reabertos com o
+  inicializador de recebimento. Home 200 com identidade Blessia, verificação local
+  sem token 403 esperada e sincronização sem falhas foram confirmadas. Pausas 1/1 e
+  `DRY_RUN=true` permaneceram preservados. A inicialização não executou worker,
+  túnel ou lote de vendas; os envios seguiram depois seu procedimento individual.
+- Em **29/10 às 16h19 BRT**, o lote 52–101 foi encerrado com **46 envios
+  confirmados, 4 perfis indisponíveis excluídos sem tentativa e zero restantes**.
+  Pausas 1/1, `DRY_RUN=true`, nenhum worker geral ou job em execução. Painel e
+  sincronizador estavam ativos, com home 200. Seis mensagens de cinco contatos
+  ficaram para revisão, sem resposta automática nem interesse comercial confirmado.
+  O receptor permanece restrito ao recebimento; o fechamento não libera novos envios.
 
 Evidências locais, ignoradas pelo Git: `logs/receiver-vps-v2-apply-2026-10-28.txt`,
 `logs/receiver-vps-v2-postcheck-2026-10-28.txt`,
 `logs/receiver-vps-v2-tests-plan-2026-10-28.txt`,
 `logs/permanent-callback-main-2026-10-28.json` e
 `logs/receiver-verification-2026-10-28T13-42-*.jsonl`.
+Renovação e operação: `logs/vinculo-meta-2026-10-29.json`,
+`logs/recebimento-real-vps-2026-10-28.json` e
+`logs/receiving-start-audit-2026-10-29.json`.
+Fechamento: `logs/operator-assisted/batch-final-audit-2026-10-29.json` e
+`logs/runtime-final-check-2026-10-29.json`. Backup local consistente e privado:
+`backups/upscale-agent-2026-10-29T19-19-39-044Z.db`, `quick_check=ok`;
+verificação em `logs/backup-final-check-2026-10-29T19-19-41-956Z.json`.
 O procedimento diário está em [RECEBIMENTO-PERMANENTE.md](../../docs/RECEBIMENTO-PERMANENTE.md).
 
 ## Fluxo e durabilidade
@@ -227,7 +249,7 @@ mudanças concorrentes, exige revisão manual; não se deve forçar a sobrescrit
 Cada nova implantação precisa ser validada no Linux da VPS; a verificação local de
 sintaxe Bash e os testes Node não substituem `systemd-analyze verify`, `nginx -t`,
 health, TLS, teste HMAC e recebimento real. Na implantação de 28/10, as verificações
-técnicas passaram; o recebimento real continua pendente conforme o estado acima.
+técnicas e o recebimento real passaram, conforme as evidências do estado acima.
 
 ## Validação antes do corte
 
